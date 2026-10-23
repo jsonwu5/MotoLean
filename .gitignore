@@ -46,3 +46,9 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# 签名密钥：绝不提交到版本库
+android/key.properties
+android/app/*.jks
+android/app/*.keystore
+
