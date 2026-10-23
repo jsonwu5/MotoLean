@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../services/settings_service.dart';
 import '../theme.dart';
 
 class RideMapPoint {
@@ -24,6 +25,7 @@ class RideMap extends StatefulWidget {
     this.colored = false,
     this.live = false,
     this.current,
+    this.mapStyle = MapStyle.satellite,
   });
 
   final List<RideMapPoint> points;
@@ -31,6 +33,7 @@ class RideMap extends StatefulWidget {
   final bool colored;
   final bool live;
   final LatLng? current;
+  final MapStyle mapStyle;
 
   @override
   State<RideMap> createState() => _RideMapState();
@@ -137,8 +140,9 @@ class _RideMapState extends State<RideMap> {
             options: options,
             children: [
               TileLayer(
-                urlTemplate:
-                    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                urlTemplate: widget.mapStyle == MapStyle.dark
+                    ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+                    : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
                 userAgentPackageName: 'com.jsonwoo.motolean',
               ),
               if (widget.colored)
@@ -195,9 +199,14 @@ class _RideMapState extends State<RideMap> {
                 color: Colors.black.withValues(alpha: 0.55),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: const Text(
-                '© Esri · Maxar · Earthstar Geographics',
-                style: TextStyle(fontSize: 8, color: AppColors.textSecondary),
+              child: Text(
+                widget.mapStyle == MapStyle.dark
+                    ? '© OpenStreetMap · CARTO'
+                    : '© Esri · Maxar · Earthstar Geographics',
+                style: const TextStyle(
+                  fontSize: 8,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
           ),

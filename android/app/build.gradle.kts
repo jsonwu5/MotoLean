@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "com.motolean.motolean"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android 要求编译时使用 API 37+，因此显式指定。
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

@@ -1,17 +1,28 @@
 import 'package:flutter/material.dart';
 
+import '../models/acceleration_run.dart';
 import '../models/ride_session.dart';
 import '../services/demo_ride.dart';
 import '../services/ride_store.dart';
+import '../services/settings_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import '../utils/units.dart';
+import 'acceleration_history_screen.dart';
+import 'acceleration_screen.dart';
 import 'record_screen.dart';
+import 'settings_screen.dart';
 import 'summary_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.store});
+  const HomeScreen({
+    super.key,
+    required this.store,
+    required this.settings,
+  });
 
   final RideStore store;
+  final SettingsService settings;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -19,6 +30,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<RideSession> _sessions = const [];
+  AccelerationRun? _bestAccel;
   bool _loading = true;
   bool _importingDemo = false;
   String? _error;
@@ -35,11 +47,22 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     try {
       final sessions = await widget.store.loadSessions();
+      final runs = await widget.store.loadAccelerationRuns(limit: 50);
+      AccelerationRun? best;
+      for (final run in runs) {
+        if (!run.valid) {
+          continue;
+        }
+        if (best == null || run.resultMs < best.resultMs) {
+          best = run;
+        }
+      }
       if (!mounted) {
         return;
       }
       setState(() {
         _sessions = sessions;
+        _bestAccel = best;
         _loading = false;
         _error = null;
       });
@@ -57,7 +80,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _startRide() async {
     final sessionId = await Navigator.of(context).push<int>(
       MaterialPageRoute(
-        builder: (_) => RecordScreen(store: widget.store),
+        builder: (_) => RecordScreen(
+          store: widget.store,
+          settings: widget.settings,
+        ),
       ),
     );
     if (!mounted) {
@@ -74,7 +100,50 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (_) => SummaryScreen(
           store: widget.store,
+          settings: widget.settings,
           sessionId: sessionId,
+        ),
+      ),
+    );
+    if (mounted) {
+      await _load();
+    }
+  }
+
+  Future<void> _openSettings() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => SettingsScreen(
+          store: widget.store,
+          settings: widget.settings,
+        ),
+      ),
+    );
+    if (mounted) {
+      await _load();
+    }
+  }
+
+  Future<void> _startAcceleration() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => AccelerationScreen(
+          store: widget.store,
+          settings: widget.settings,
+        ),
+      ),
+    );
+    if (mounted) {
+      await _load();
+    }
+  }
+
+  Future<void> _openAccelerationHistory() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => AccelerationHistoryScreen(
+          store: widget.store,
+          settings: widget.settings,
         ),
       ),
     );
@@ -166,7 +235,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                    child: _Header(onInfo: _showMeasurementInfo),
+                    child: _Header(
+                      onInfo: _showMeasurementInfo,
+                      onSettings: _openSettings,
+                    ),
                   ),
                 ),
                 SliverToBoxAdapter(
@@ -176,6 +248,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       onStart: _startRide,
                       onDemo: _importingDemo ? null : _loadDemo,
                       importingDemo: _importingDemo,
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: _AccelerationCard(
+                      best: _bestAccel,
+                      onStart: _startAcceleration,
+                      onHistory: _openAccelerationHistory,
                     ),
                   ),
                 ),
@@ -216,8 +298,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         const Spacer(),
                         if (_sessions.isNotEmpty)
                           Text(
-                            '${totalDistance >= 1000 ? (totalDistance / 1000).toStringAsFixed(1) : totalDistance.round()} '
-                            '${totalDistance >= 1000 ? "km" : "m"} · 最大 ${maxLean.round()}°',
+                            '${formatDistanceWithUnit(totalDistance, widget.settings.distanceUnit)} · 最大 ${maxLean.round()}°',
                             style: const TextStyle(
                               fontSize: 11,
                               color: AppColors.textTertiary,
@@ -266,6 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         final session = _sessions[index];
                         return _SessionCard(
                           session: session,
+                          settings: widget.settings,
                           onTap: session.id == null
                               ? null
                               : () => _openSummary(session.id!),
@@ -310,9 +392,10 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.onInfo});
+  const _Header({required this.onInfo, required this.onSettings});
 
   final VoidCallback onInfo;
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -357,6 +440,20 @@ class _Header extends StatelessWidget {
           ],
         ),
         const Spacer(),
+        IconButton(
+          onPressed: onSettings,
+          tooltip: '设置',
+          style: IconButton.styleFrom(
+            backgroundColor: AppColors.surface,
+            side: const BorderSide(color: AppColors.divider),
+          ),
+          icon: const Icon(
+            Icons.settings_outlined,
+            size: 20,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(width: 8),
         IconButton(
           onPressed: onInfo,
           tooltip: '测量说明',
@@ -529,10 +626,147 @@ class _HeroCard extends StatelessWidget {
   }
 }
 
+class _AccelerationCard extends StatelessWidget {
+  const _AccelerationCard({
+    required this.best,
+    required this.onStart,
+    required this.onHistory,
+  });
+
+  final AccelerationRun? best;
+  final VoidCallback onStart;
+  final VoidCallback onHistory;
+
+  @override
+  Widget build(BuildContext context) {
+    final run = best;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 14, 14, 12),
+      decoration: cardDecoration(),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.cyan.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.speed_rounded,
+                  color: AppColors.cyan,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '零百加速',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'GPS 测速 · 插值计时',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton(
+                onPressed: onStart,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.cyan,
+                  foregroundColor: const Color(0xFF001A1F),
+                  minimumSize: const Size(0, 38),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                child: const Text('开始'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Divider(height: 1),
+          Row(
+            children: [
+              const Icon(
+                Icons.emoji_events_rounded,
+                size: 14,
+                color: AppColors.accent,
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  run == null
+                      ? '还没有成绩，测一次试试'
+                      : '最佳 0–${run.targetSpeedKmh.round()}：'
+                          '${run.resultSeconds.toStringAsFixed(2)} 秒 · '
+                          '${formatDateWithWeekday(run.startedAt)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight:
+                        run == null ? FontWeight.w500 : FontWeight.w700,
+                    color: run == null
+                        ? AppColors.textTertiary
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: onHistory,
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(0, 30),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  foregroundColor: AppColors.textSecondary,
+                  textStyle: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('成绩记录'),
+                    Icon(Icons.chevron_right_rounded, size: 15),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SessionCard extends StatelessWidget {
-  const _SessionCard({required this.session, required this.onTap});
+  const _SessionCard({
+    required this.session,
+    required this.settings,
+    required this.onTap,
+  });
 
   final RideSession session;
+  final SettingsService settings;
   final VoidCallback? onTap;
 
   @override
@@ -540,6 +774,8 @@ class _SessionCard extends StatelessWidget {
     final lean = session.maxLeanLeftDeg > session.maxLeanRightDeg
         ? session.maxLeanLeftDeg
         : session.maxLeanRightDeg;
+    final unit = settings.speedUnit;
+    final distanceUnit = settings.distanceUnit;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -633,7 +869,7 @@ class _SessionCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       '${formatClock(session.startedAt)} · ${formatDuration(session.durationS)} · '
-                      '均速 ${session.avgSpeedKmh.round()} km/h',
+                      '均速 ${formatSpeedWithUnit(session.avgSpeedMps, unit)}',
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.textTertiary,
@@ -646,11 +882,14 @@ class _SessionCard extends StatelessWidget {
                       children: [
                         _MiniValue(
                           icon: Icons.route_rounded,
-                          value: formatDistance(session.distanceM),
+                          value: formatDistanceWithUnit(
+                            session.distanceM,
+                            distanceUnit,
+                          ),
                         ),
                         _MiniValue(
                           icon: Icons.speed_rounded,
-                          value: '${session.maxSpeedKmh.round()} km/h',
+                          value: formatSpeedWithUnit(session.maxSpeedMps, unit),
                         ),
                       ],
                     ),

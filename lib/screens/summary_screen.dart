@@ -9,9 +9,11 @@ import '../models/ride_sample.dart';
 import '../models/ride_session.dart';
 import '../services/ride_exporter.dart';
 import '../services/ride_store.dart';
+import '../services/settings_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../utils/ride_analytics.dart';
+import '../utils/units.dart';
 import '../widgets/ride_map.dart';
 import '../widgets/stat_tile.dart';
 
@@ -19,10 +21,12 @@ class SummaryScreen extends StatefulWidget {
   const SummaryScreen({
     super.key,
     required this.store,
+    required this.settings,
     required this.sessionId,
   });
 
   final RideStore store;
+  final SettingsService settings;
   final int sessionId;
 
   @override
@@ -210,6 +214,9 @@ class _SummaryScreenState extends State<SummaryScreen> {
     final bands = RideAnalytics.leanBands(_samples);
     final corners = RideAnalytics.cornerCount(_samples);
     final above30 = RideAnalytics.secondsAboveLean(_samples, 30);
+    final unit = widget.settings.speedUnit;
+    final distanceUnit = widget.settings.distanceUnit;
+    final elevationUnit = widget.settings.elevationUnit;
     final mapPoints = [
       for (final sample in _samples)
         if (sample.hasPosition)
@@ -312,6 +319,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
         RemoteMapCard(
           points: mapPoints,
           hasTrack: mapPoints.length > 1,
+          mapStyle: widget.settings.mapStyle,
         ),
         const SizedBox(height: 20),
         Row(
@@ -342,7 +350,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
             Expanded(
               child: StatTile(
                 label: '里程',
-                value: formatDistance(session.distanceM),
+                value: formatDistanceWithUnit(session.distanceM, distanceUnit),
               ),
             ),
             const SizedBox(width: 8),
@@ -360,16 +368,16 @@ class _SummaryScreenState extends State<SummaryScreen> {
             Expanded(
               child: StatTile(
                 label: '均速',
-                value: session.avgSpeedKmh.round().toString(),
-                unit: 'km/h',
+                value: formatSpeedValue(session.avgSpeedMps, unit),
+                unit: unit.label,
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: StatTile(
                 label: '极速',
-                value: session.maxSpeedKmh.round().toString(),
-                unit: 'km/h',
+                value: formatSpeedValue(session.maxSpeedMps, unit),
+                unit: unit.label,
               ),
             ),
           ],
@@ -392,7 +400,10 @@ class _SummaryScreenState extends State<SummaryScreen> {
             _HighlightChip(
               icon: Icons.terrain_rounded,
               label: '爬升',
-              value: '${session.elevationGainM.round()} m',
+              value: formatElevationWithUnit(
+                session.elevationGainM,
+                elevationUnit,
+              ),
             ),
             _HighlightChip(
               icon: Icons.timeline_rounded,
@@ -434,12 +445,18 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'GPS 速度 · km/h',
-                style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+              Text(
+                'GPS 速度 · ${unit.label}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textTertiary,
+                ),
               ),
               const SizedBox(height: 16),
-              _SpeedChart(points: RideAnalytics.speedSeries(_samples)),
+              _SpeedChart(
+                points: RideAnalytics.speedSeries(_samples),
+                unit: unit,
+              ),
             ],
           ),
         ),
@@ -500,10 +517,16 @@ class _SummaryScreenState extends State<SummaryScreen> {
 }
 
 class RemoteMapCard extends StatelessWidget {
-  const RemoteMapCard({super.key, required this.points, required this.hasTrack});
+  const RemoteMapCard({
+    super.key,
+    required this.points,
+    required this.hasTrack,
+    this.mapStyle = MapStyle.satellite,
+  });
 
   final List<RideMapPoint> points;
   final bool hasTrack;
+  final MapStyle mapStyle;
 
   @override
   Widget build(BuildContext context) {
@@ -515,6 +538,7 @@ class RemoteMapCard extends StatelessWidget {
             points: points,
             height: 250,
             colored: true,
+            mapStyle: mapStyle,
           )
         else
           Container(
@@ -698,9 +722,10 @@ class _LeanBands extends StatelessWidget {
 }
 
 class _SpeedChart extends StatelessWidget {
-  const _SpeedChart({required this.points});
+  const _SpeedChart({required this.points, required this.unit});
 
   final List<SpeedPoint> points;
+  final SpeedUnit unit;
 
   @override
   Widget build(BuildContext context) {
@@ -715,9 +740,10 @@ class _SpeedChart extends StatelessWidget {
         ),
       );
     }
+    double toUnit(double kmh) => unit.fromMps(kmh / 3.6);
     final maxSpeed = points.fold<double>(
       0.0,
-      (value, point) => math.max(value, point.speedKmh),
+      (value, point) => math.max(value, toUnit(point.speedKmh)),
     );
     final maxY = math.max(20.0, (maxSpeed / 20).ceil() * 20.0);
     final duration = math.max(1.0, points.last.tSeconds);
@@ -786,7 +812,7 @@ class _SpeedChart extends StatelessWidget {
             LineChartBarData(
               spots: [
                 for (final point in points)
-                  FlSpot(point.tSeconds, point.speedKmh),
+                  FlSpot(point.tSeconds, toUnit(point.speedKmh)),
               ],
               isCurved: true,
               curveSmoothness: 0.22,

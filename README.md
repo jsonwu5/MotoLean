@@ -1,6 +1,6 @@
 # 摩倾 MotoLean
 
-记录摩托车跑山时的**倾角、速度、轨迹与海拔**。手机固定在车上，3 秒校准后即可熄屏记录，结束后查看按倾角着色的轨迹、倾角分布和速度曲线，并导出 GPX / CSV。
+记录摩托车跑山时的**倾角、速度、轨迹与海拔**，并支持**零百加速测试**。手机固定在车上，3 秒校准后即可熄屏记录，结束后查看按倾角着色的轨迹、倾角分布和速度曲线，并导出 GPX / CSV；零百测试则给出 0–60 / 0–100 / 60–130 成绩、起步距离与坡度。
 
 这是面向个人使用的离线原型：没有账号、没有云端。手机端数据保存在本机 SQLite，Web 预览使用内存存储。
 
@@ -24,6 +24,9 @@
 - 行程总结：左右最大倾角、里程、时长、均速/极速、爬升、过弯次数、倾角分布、速度曲线
 - 轨迹按倾角区间着色（0–10° / 10–20° / 20–30° / 30–40° / 40°+）
 - GPX（含速度与倾角扩展）与 CSV 导出，走系统分享面板
+- **零百加速测试**：0–60 / 0–100 / 60–130 / 0–200，GPS 多普勒测速 + 相邻采样点插值计时，附带起步距离与坡度
+- **加速成绩页**：历史成绩、最佳成绩、分享与删除，含 1 英尺 rollout 口径开关
+- **设置页**：速度/距离单位（km/h、mph、km、mi）、校准时长、GPS 精度阈值、屏幕常亮、二次确认、零百默认参数、地图底图与实时轨迹、数据导出与清理
 - 首页内置一条**模拟演示行程**，没有真机也能先看完整效果
 - Android 前台服务 + 通知、iOS 后台定位，支持熄屏记录
 
@@ -90,6 +93,19 @@ flutter build ios --release
 
 没有真机时可在首页点「查看演示」或空状态里的「载入演示行程」，查看一条模拟山路行程。
 
+### 零百加速测试
+
+1. 找一段**封闭直道**，车辆停稳。
+2. 首页点「零百加速 → 开始」，等待 GPS 精度优于 ±15 m。
+3. 精度达标后点「开始测试」，可选 3-2-1 倒计时。
+4. 起步后界面实时显示速度与用时，达到目标速度自动结束。
+5. 结果页可查看 0–60 / 60–130、起步距离、坡度与轨迹，支持分享。
+6. 历史成绩在首页「成绩记录」里，滑动可删除。
+
+目标是 60 / 100 / 200 km/h 与 1 英尺 rollout 口径，都在设置页里调。
+
+> 零百测试的风险完全由你承担：公共道路急加速极其危险，且可能违法。请在封闭场地进行。
+
 ## 后台记录与权限
 
 ### Android
@@ -129,10 +145,12 @@ GPS 在开阔路段的速度误差约 1~2 km/h；山谷、林道、隧道会出�
 
 ## 数据
 
-- 存储：手机端为应用私有目录下的 SQLite（`motolean.db`），表 `sessions` 与 `samples`；Web 预览使用内存存储，刷新即清空。
+- 存储：手机端为应用私有目录下的 SQLite（`motolean.db`），表 `sessions` / `samples` 与 `acceleration_runs` / `acceleration_samples`（数据库版本 v2）；Web 预览使用内存存储，刷新即清空。
+- 设置：单位、阈值、零百参数等偏好存在 `shared_preferences`，不写数据库。
 - 中断恢复：应用被系统杀掉后，下次启动会把未完成的会话按已落盘样本补全为已结束行程。
-- 导出：GPX 1.1，附带自定义命名空间 `ml:speed_kmh` 与 `ml:lean_deg`；CSV 带 UTF-8 BOM，字段为时间、相对秒数、经纬度、海拔、速度、倾角、定位精度。文件在内存中生成后交给系统分享面板，不额外落盘。
+- 导出：GPX 1.1，附带自定义命名空间 `ml:speed_kmh` 与 `ml:lean_deg`；CSV 带 UTF-8 BOM，字段为时间、相对秒数、经纬度、海拔、速度、倾角、定位精度。文件在内存中生成后交给系统分享面板，不额外落盘。设置页还支持把全部行程合并导出为一个 CSV。
 - 演示行程标记为 `is_demo`，地图与列表都会显示「演示」标识。
+- 内部一律使用 SI 单位（米、米/秒）存储，只在展示层按设置换算。
 
 ## 项目结构
 
@@ -140,22 +158,25 @@ GPS 在开阔路段的速度误差约 1~2 km/h；山谷、林道、隧道会出�
 lib/
   main.dart / app.dart          应用入口、主题与中文本地化
   theme.dart                    深色高对比主题
-  models/                       RideSession / RideSample
+  models/                       RideSession / RideSample / AccelerationRun / AccelerationSample
   services/
     lean_angle_estimator.dart   校准 + 互补滤波（纯 Dart，可单测）
+    acceleration_timer.dart     零百计时：插值求达速时刻、有效性判定（纯 Dart，可单测）
+    acceleration_recorder.dart  零百采集与状态机
     ride_recorder.dart          采样、统计、暂停/恢复、落库
-    ride_store.dart             SQLite 存储、中断修复、Web 内存存储
+    ride_store.dart             SQLite 存储（v2）、零百成绩 CRUD、中断修复、Web 内存存储
+    settings_service.dart       偏好设置（shared_preferences）
     location_service.dart       定位权限与定位流
     sensor_service.dart         加速度计/陀螺仪 50 Hz 流
     ride_exporter.dart          GPX / CSV 生成
     demo_ride.dart              按倾角/曲率生成的演示行程
-  screens/                      首页 / 记录 / 总结
-  widgets/                      倾角表盘、地图、统计卡
-  utils/                        距离、格式化、分析
+  screens/                      首页 / 记录 / 总结 / 零百 / 成绩 / 设置
+  widgets/                      倾角表盘、地图、统计卡、设置行
+  utils/                        距离、格式化、单位换算、分析
 assets/app_icon.png             应用图标源文件
 screenshots/                    界面截图
 web/                            Web 预览入口
-test/                           算法、存储、导出、界面测试
+test/                           算法、存储、导出、设置、界面测试
 ```
 
 ## 测试与检查
@@ -173,6 +194,9 @@ flutter test
 - GPX/CSV 格式、GPS 空洞分段
 - 演示行程合理性与统计一致性
 - 倾角区间、过弯计数、速度序列降采样
+- 零百插值计时、0–60/60–130 分段、rollout 口径、打滑/空洞/未停稳判定
+- 零百成绩的存储读写、倒序、limit、级联删除、演示数据清理
+- 设置默认值、取值校验（精度阈值、校准时长、目标速度、倒计时）、单位换算
 - SQLite 同构的内存存储读写、演示导入与删除
 - 首页、记录前页、总结页、倾角表盘的 Widget 渲染与滚动布局
 
@@ -181,11 +205,14 @@ Xcode 26.3 下的 iOS Release 构建、签名与真机安装已通过；首次�
 ## 已知限制 / 后续方向
 
 - 未做真机长测；后台存活与传感器漂移需要在目标机型上验证。
+- 零百成绩依赖手机 GPS：更新率通常 1 Hz，靠相邻采样点插值，误差约 ±0.1–0.3 秒；不同机型差异明显，适合同机横向对比，不适合与 Dragy/RaceBox 等专业设备比绝对值。
+- 1 英尺 rollout 用速度阈值（约 6.5 km/h）近似位移，无法精确测量 30 cm 位移。
 - 安装方向依赖用户按说明固定；手机绕纵轴转过后需要重新开始记录校准。
 - Web 预览没有后台记录，桌面浏览器通常读不到运动传感器。
 - 导航、离线地图、云端同步、好友排行、外接 IMU/GPS、崩溃检测均未实现。
-- 地图瓦片来自 Esri World Imagery，需要网络；瓦片请求会向地图服务暴露大致查看区域。底图署名：Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community。正式发布前请确认 Esri 瓦片使用条款，或替换为自己的地图服务（国内可考虑高德/腾讯地图）。
+- 地图瓦片来自 Esri World Imagery 或 CARTO（可在设置里切换），需要网络；瓦片请求会向地图服务暴露大致查看区域。底图署名：Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community；简约暗色底图 © OpenStreetMap contributors, © CARTO。正式发布前请确认瓦片使用条款，或替换为自己的地图服务（国内可考虑高德/腾讯地图）。
 - 上架前请更换 `com.jsonwoo.motolean` 包名/Bundle ID、签名、应用图标与隐私说明。
+- 零百测试务必在封闭场地进行，公共道路急加速危险且可能违法。
 
 ## 安全提示
 

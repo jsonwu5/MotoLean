@@ -7,16 +7,23 @@ import '../services/location_service.dart';
 import '../services/ride_recorder.dart';
 import '../services/ride_store.dart';
 import '../services/sensor_service.dart';
+import '../services/settings_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import '../utils/units.dart';
 import '../widgets/lean_gauge.dart';
 import '../widgets/ride_map.dart';
 import '../widgets/stat_tile.dart';
 
 class RecordScreen extends StatefulWidget {
-  const RecordScreen({super.key, required this.store});
+  const RecordScreen({
+    super.key,
+    required this.store,
+    required this.settings,
+  });
 
   final RideStore store;
+  final SettingsService settings;
 
   @override
   State<RecordScreen> createState() => _RecordScreenState();
@@ -35,7 +42,12 @@ class _RecordScreenState extends State<RecordScreen> {
       store: widget.store,
       locationService: LocationService(),
       sensorService: SensorService(),
+      calibrationSeconds: widget.settings.calibrationSeconds,
     );
+    if (widget.settings.defaultScreenAwake) {
+      _screenAwake = true;
+      unawaited(WakelockPlus.enable().catchError((_) {}));
+    }
   }
 
   @override
@@ -71,7 +83,9 @@ class _RecordScreenState extends State<RecordScreen> {
       final state = _recorder.state;
       if (state == RecorderState.recording ||
           state == RecorderState.paused) {
-        final shouldStop = await _askStop();
+        final shouldStop = widget.settings.confirmBeforeStop
+            ? await _askStop()
+            : true;
         if (shouldStop == true) {
           await _stopAndPop();
         }
@@ -222,9 +236,9 @@ class _RecordScreenState extends State<RecordScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                const Text(
-                  '接下来会用 3 秒校准倾角零位，然后自动开始记录。',
-                  style: TextStyle(
+                Text(
+                  '接下来会用 ${_recorder.calibrationSeconds} 秒校准倾角零位，然后自动开始记录。',
+                  style: const TextStyle(
                     fontSize: 13,
                     height: 1.5,
                     color: AppColors.textSecondary,
@@ -238,10 +252,12 @@ class _RecordScreenState extends State<RecordScreen> {
                   icon: Icons.phone_android_rounded,
                 ),
                 const SizedBox(height: 10),
-                const _StepCard(
+                _StepCard(
                   number: '02',
                   title: '扶正车身',
-                  body: '开始后保持车身与手机静止 3 秒，完成零位校准。支架角度变化后请重新开始一次记录。',
+                  body: '开始后保持车身与手机静止 '
+                      '${_recorder.calibrationSeconds} 秒，完成零位校准。'
+                      '支架角度变化后请重新开始一次记录。',
                   icon: Icons.straighten_rounded,
                 ),
                 const SizedBox(height: 10),
@@ -339,7 +355,8 @@ class _RecordScreenState extends State<RecordScreen> {
 
   Widget _buildCalibrating() {
     final progress = _recorder.calibrationProgress;
-    final remaining = (3 * (1 - progress)).ceil().clamp(1, 3);
+    final total = _recorder.calibrationSeconds;
+    final remaining = (total * (1 - progress)).ceil().clamp(1, total);
     return Column(
       children: [
         _TopBar(onClose: _handleBack, title: '校准'),
@@ -539,6 +556,8 @@ class _RecordScreenState extends State<RecordScreen> {
   Widget _buildDashboard() {
     final paused = _recorder.state == RecorderState.paused;
     final recording = _recorder.state == RecorderState.recording;
+    final unit = widget.settings.speedUnit;
+    final distanceUnit = widget.settings.distanceUnit;
     final track = [
       for (final point in _recorder.track)
         RideMapPoint(
@@ -640,7 +659,7 @@ class _RecordScreenState extends State<RecordScreen> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            _recorder.speedKmh.round().toString(),
+                            formatSpeedValue(_recorder.speedKmh / 3.6, unit),
                             style: const TextStyle(
                               fontSize: 82,
                               height: 0.86,
@@ -652,7 +671,7 @@ class _RecordScreenState extends State<RecordScreen> {
                           Padding(
                             padding: const EdgeInsets.only(bottom: 10, left: 6),
                             child: Text(
-                              'km/h',
+                              unit.label,
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -678,7 +697,10 @@ class _RecordScreenState extends State<RecordScreen> {
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  '${_recorder.maxSpeedKmh.round()} km/h',
+                                  formatSpeedWithUnit(
+                                    _recorder.maxSpeedKmh / 3.6,
+                                    unit,
+                                  ),
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -704,7 +726,10 @@ class _RecordScreenState extends State<RecordScreen> {
                     Expanded(
                       child: StatTile(
                         label: '距离',
-                        value: formatDistance(_recorder.distanceM),
+                        value: formatDistanceWithUnit(
+                          _recorder.distanceM,
+                          distanceUnit,
+                        ),
                         height: 80,
                       ),
                     ),
@@ -720,8 +745,9 @@ class _RecordScreenState extends State<RecordScreen> {
                     Expanded(
                       child: StatTile(
                         label: '均速',
-                        value: _recorder.avgSpeedKmh.round().toString(),
-                        unit: 'km/h',
+                        value:
+                            formatSpeedValue(_recorder.avgSpeedKmh / 3.6, unit),
+                        unit: unit.label,
                         height: 80,
                         accent: true,
                       ),
@@ -754,11 +780,13 @@ class _RecordScreenState extends State<RecordScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                RideMap(
-                  points: track,
-                  live: true,
-                  height: 158,
-                ),
+                if (widget.settings.showLiveTrack)
+                  RideMap(
+                    points: track,
+                    live: true,
+                    height: 158,
+                    mapStyle: widget.settings.mapStyle,
+                  ),
                 if (_recorder.gpsError != null) ...[
                   const SizedBox(height: 8),
                   Text(

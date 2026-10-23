@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:motolean/app.dart';
 import 'package:motolean/screens/record_screen.dart';
 import 'package:motolean/services/ride_store.dart';
+import 'package:motolean/services/settings_service.dart';
 import 'package:motolean/theme.dart';
 import 'package:motolean/widgets/lean_gauge.dart';
 
@@ -19,7 +20,9 @@ void main() {
       tester.view.resetDevicePixelRatio();
     });
 
-    await tester.pumpWidget(MotoLeanApp(store: RideStore()));
+    await tester.pumpWidget(
+      MotoLeanApp(store: RideStore(), settings: SettingsService()),
+    );
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('摩倾'), findsOneWidget);
@@ -38,7 +41,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAppTheme(),
-        home: RecordScreen(store: RideStore()),
+        home: RecordScreen(store: RideStore(), settings: SettingsService()),
       ),
     );
     await tester.pump();

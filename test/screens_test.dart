@@ -5,10 +5,12 @@ import 'package:motolean/models/ride_sample.dart';
 import 'package:motolean/models/ride_session.dart';
 import 'package:motolean/screens/summary_screen.dart';
 import 'package:motolean/services/ride_store.dart';
+import 'package:motolean/services/settings_service.dart';
 import 'package:motolean/theme.dart';
 
 class _FakeStore extends RideStore {
-  _FakeStore({required this.session, required this.samples});
+  _FakeStore({required this.session, required this.samples})
+      : super(useMemory: true);
 
   final RideSession session;
   final List<RideSample> samples;
@@ -63,7 +65,9 @@ void main() {
     usePhoneSize(tester);
     final store = _FakeStore(session: _session(), samples: _samples());
 
-    await tester.pumpWidget(MotoLeanApp(store: store));
+    await tester.pumpWidget(
+      MotoLeanApp(store: store, settings: SettingsService()),
+    );
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.textContaining('10月1日'), findsOneWidget);
@@ -80,7 +84,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAppTheme(),
-        home: SummaryScreen(store: store, sessionId: 1),
+        home: SummaryScreen(
+          store: store,
+          settings: SettingsService(),
+          sessionId: 1,
+        ),
       ),
     );
     await tester.pump();

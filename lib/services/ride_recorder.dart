@@ -41,11 +41,17 @@ class RideRecorder extends ChangeNotifier {
     required this.store,
     required this.locationService,
     required this.sensorService,
+    this.calibrationSeconds = 3,
   });
 
   final RideStore store;
   final LocationService locationService;
   final SensorService sensorService;
+
+  /// 校准时长（秒），可在设置里调整。
+  final int calibrationSeconds;
+
+  int get calibrationDurationMs => calibrationSeconds.clamp(2, 5) * 1000;
 
   final LeanAngleEstimator _estimator = LeanAngleEstimator();
   final List<Vec3> _calibrationAccel = [];
@@ -165,9 +171,9 @@ class RideRecorder extends ChangeNotifier {
         }
         final elapsed = DateTime.now().difference(started).inMilliseconds;
         calibrationProgress =
-            (elapsed / 3000).clamp(0.0, 1.0).toDouble();
+            (elapsed / calibrationDurationMs).clamp(0.0, 1.0).toDouble();
         _notify();
-        if (elapsed >= 3000) {
+        if (elapsed >= calibrationDurationMs) {
           timer.cancel();
           unawaited(_finishCalibration());
         }

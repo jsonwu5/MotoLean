@@ -2,18 +2,30 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
+import '../models/acceleration_run.dart';
+import '../models/acceleration_sample.dart';
 import '../models/ride_sample.dart';
 import '../models/ride_session.dart';
 import '../services/demo_ride.dart';
 import '../utils/geo.dart';
 
+/// 本地存储：行程（sessions/samples）与零百成绩（acceleration_runs/samples）。
+///
+/// SQLite 与内存两套实现，Web 预览用内存、手机用 SQLite，接口完全一致。
 class RideStore {
   RideStore({bool? useMemory}) : _useMemory = useMemory ?? kIsWeb;
+
+  /// 数据库版本。v2 新增零百成绩两张表。
+  static const int schemaVersion = 2;
 
   final bool _useMemory;
   final List<RideSession> _memorySessions = [];
   final Map<int, List<RideSample>> _memorySamples = {};
   int _nextMemoryId = 1;
+
+  final List<AccelerationRun> _memoryAccelRuns = [];
+  final Map<int, List<AccelerationSample>> _memoryAccelSamples = {};
+  int _nextAccelRunId = 1;
 
   Database? _db;
 
@@ -32,48 +44,103 @@ class RideStore {
     final directory = await getDatabasesPath();
     _db = await openDatabase(
       p.join(directory, 'motolean.db'),
-      version: 1,
+      version: schemaVersion,
       onConfigure: (db) => db.execute('PRAGMA foreign_keys = ON'),
       onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE sessions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            started_at INTEGER NOT NULL,
-            ended_at INTEGER,
-            distance_m REAL NOT NULL DEFAULT 0,
-            duration_s INTEGER NOT NULL DEFAULT 0,
-            moving_s INTEGER NOT NULL DEFAULT 0,
-            max_speed_mps REAL NOT NULL DEFAULT 0,
-            avg_speed_mps REAL NOT NULL DEFAULT 0,
-            max_lean_left_deg REAL NOT NULL DEFAULT 0,
-            max_lean_right_deg REAL NOT NULL DEFAULT 0,
-            elevation_gain_m REAL NOT NULL DEFAULT 0,
-            sample_count INTEGER NOT NULL DEFAULT 0,
-            is_demo INTEGER NOT NULL DEFAULT 0,
-            note TEXT
-          )
-        ''');
-        await db.execute('''
-          CREATE TABLE samples (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id INTEGER NOT NULL,
-            t_ms INTEGER NOT NULL,
-            lean_deg REAL NOT NULL,
-            lat REAL,
-            lon REAL,
-            alt_m REAL,
-            speed_mps REAL,
-            accuracy_m REAL,
-            FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
-          )
-        ''');
-        await db.execute(
-          'CREATE INDEX idx_samples_session ON samples (session_id, t_ms)',
-        );
+        // 新装用户与升级用户必须得到完全一致的表结构，因此建表 SQL 共用。
+        await _createRideTables(db);
+        await _createAccelerationTables(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await _createAccelerationTables(db);
+        }
       },
     );
     await _finalizeOrphanSessions();
   }
+
+  static Future<void> _createRideTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE sessions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        started_at INTEGER NOT NULL,
+        ended_at INTEGER,
+        distance_m REAL NOT NULL DEFAULT 0,
+        duration_s INTEGER NOT NULL DEFAULT 0,
+        moving_s INTEGER NOT NULL DEFAULT 0,
+        max_speed_mps REAL NOT NULL DEFAULT 0,
+        avg_speed_mps REAL NOT NULL DEFAULT 0,
+        max_lean_left_deg REAL NOT NULL DEFAULT 0,
+        max_lean_right_deg REAL NOT NULL DEFAULT 0,
+        elevation_gain_m REAL NOT NULL DEFAULT 0,
+        sample_count INTEGER NOT NULL DEFAULT 0,
+        is_demo INTEGER NOT NULL DEFAULT 0,
+        note TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE samples (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        session_id INTEGER NOT NULL,
+        t_ms INTEGER NOT NULL,
+        lean_deg REAL NOT NULL,
+        lat REAL,
+        lon REAL,
+        alt_m REAL,
+        speed_mps REAL,
+        accuracy_m REAL,
+        FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_samples_session ON samples (session_id, t_ms)',
+    );
+  }
+
+  static Future<void> _createAccelerationTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE acceleration_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        started_at INTEGER NOT NULL,
+        target_speed_kmh REAL NOT NULL,
+        result_ms INTEGER NOT NULL,
+        rollout INTEGER NOT NULL DEFAULT 0,
+        result_60_ms INTEGER,
+        result_130_ms INTEGER,
+        result_200_ms INTEGER,
+        distance_m REAL,
+        max_speed_kmh REAL,
+        grade_percent REAL,
+        gps_accuracy_m REAL,
+        start_lat REAL,
+        start_lon REAL,
+        valid INTEGER NOT NULL DEFAULT 1,
+        invalid_reason TEXT,
+        is_demo INTEGER NOT NULL DEFAULT 0,
+        note TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE acceleration_samples (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id INTEGER NOT NULL,
+        t_ms INTEGER NOT NULL,
+        speed_kmh REAL NOT NULL,
+        accuracy_m REAL,
+        lat REAL,
+        lon REAL,
+        FOREIGN KEY (run_id) REFERENCES acceleration_runs (id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX idx_accel_samples_run ON acceleration_samples (run_id, t_ms)',
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // 行程
+  // ---------------------------------------------------------------------------
 
   Future<int> createSession(RideSession session) async {
     if (_useMemory) {
@@ -198,6 +265,69 @@ class RideStore {
     });
   }
 
+  /// 删除全部骑行行程（设置页的危险操作）。
+  Future<void> deleteAllRides() async {
+    if (_useMemory) {
+      _memorySessions.clear();
+      _memorySamples.clear();
+      return;
+    }
+    await _database.transaction((txn) async {
+      await txn.delete('samples');
+      await txn.delete('sessions');
+    });
+  }
+
+  /// 删除全部演示数据（演示行程 + 演示成绩）。
+  Future<void> deleteDemoData() async {
+    if (_useMemory) {
+      final demoSessionIds = _memorySessions
+          .where((session) => session.isDemo)
+          .map((session) => session.id)
+          .whereType<int>()
+          .toList();
+      for (final id in demoSessionIds) {
+        _memorySamples.remove(id);
+      }
+      _memorySessions.removeWhere((session) => session.isDemo);
+      final demoRunIds = _memoryAccelRuns
+          .where((run) => run.isDemo)
+          .map((run) => run.id)
+          .whereType<int>()
+          .toList();
+      for (final id in demoRunIds) {
+        _memoryAccelSamples.remove(id);
+      }
+      _memoryAccelRuns.removeWhere((run) => run.isDemo);
+      return;
+    }
+    await _database.transaction((txn) async {
+      final demoSessionRows = await txn.query(
+        'sessions',
+        columns: ['id'],
+        where: 'is_demo = ?',
+        whereArgs: [1],
+      );
+      for (final row in demoSessionRows) {
+        final id = row['id'] as int;
+        await txn.delete('samples', where: 'session_id = ?', whereArgs: [id]);
+        await txn.delete('sessions', where: 'id = ?', whereArgs: [id]);
+      }
+      final demoRunRows = await txn.query(
+        'acceleration_runs',
+        columns: ['id'],
+        where: 'is_demo = ?',
+        whereArgs: [1],
+      );
+      for (final row in demoRunRows) {
+        final id = row['id'] as int;
+        await txn.delete('acceleration_samples', where: 'run_id = ?',
+            whereArgs: [id]);
+        await txn.delete('acceleration_runs', where: 'id = ?', whereArgs: [id]);
+      }
+    });
+  }
+
   Future<int> importDemoRide(DemoRide ride) async {
     final sessionId = await createSession(ride.session);
     final samples = [
@@ -216,6 +346,147 @@ class RideStore {
     await insertSampleCount(sessionId, samples);
     return sessionId;
   }
+
+  // ---------------------------------------------------------------------------
+  // 零百成绩
+  // ---------------------------------------------------------------------------
+
+  Future<int> createAccelerationRun(AccelerationRun run) async {
+    if (_useMemory) {
+      final id = _nextAccelRunId++;
+      _memoryAccelRuns.add(run.copyWith(id: id));
+      return id;
+    }
+    return _database.insert('acceleration_runs', run.toMap());
+  }
+
+  Future<void> updateAccelerationRun(AccelerationRun run) async {
+    final id = run.id;
+    if (id == null) {
+      return;
+    }
+    if (_useMemory) {
+      final index = _memoryAccelRuns.indexWhere((item) => item.id == id);
+      if (index >= 0) {
+        _memoryAccelRuns[index] = run;
+      }
+      return;
+    }
+    await _database.update(
+      'acceleration_runs',
+      run.toMap()..remove('id'),
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<int> insertAccelerationSamples(
+    int runId,
+    List<AccelerationSample> samples,
+  ) async {
+    if (samples.isEmpty) {
+      return 0;
+    }
+    if (_useMemory) {
+      _memoryAccelSamples
+          .putIfAbsent(runId, () => [])
+          .addAll(samples.map((sample) => _withRunId(sample, runId)));
+      return samples.length;
+    }
+    final batch = _database.batch();
+    for (final sample in samples) {
+      batch.insert('acceleration_samples', _withRunId(sample, runId).toMap());
+    }
+    await batch.commit(noResult: true);
+    return samples.length;
+  }
+
+  Future<List<AccelerationRun>> loadAccelerationRuns({int limit = 200}) async {
+    if (_useMemory) {
+      final runs = List<AccelerationRun>.of(_memoryAccelRuns);
+      runs.sort((a, b) => b.startedAt.compareTo(a.startedAt));
+      return runs.take(limit).toList();
+    }
+    final rows = await _database.query(
+      'acceleration_runs',
+      orderBy: 'started_at DESC',
+      limit: limit,
+    );
+    return rows.map(AccelerationRun.fromMap).toList();
+  }
+
+  Future<AccelerationRun?> loadAccelerationRun(int id) async {
+    if (_useMemory) {
+      for (final run in _memoryAccelRuns) {
+        if (run.id == id) {
+          return run;
+        }
+      }
+      return null;
+    }
+    final rows = await _database.query(
+      'acceleration_runs',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : AccelerationRun.fromMap(rows.first);
+  }
+
+  Future<List<AccelerationSample>> loadAccelerationSamples(int runId) async {
+    if (_useMemory) {
+      final samples = List<AccelerationSample>.of(
+        _memoryAccelSamples[runId] ?? const [],
+      );
+      samples.sort((a, b) => a.tMs.compareTo(b.tMs));
+      return samples;
+    }
+    final rows = await _database.query(
+      'acceleration_samples',
+      where: 'run_id = ?',
+      whereArgs: [runId],
+      orderBy: 't_ms ASC',
+    );
+    return rows.map(AccelerationSample.fromMap).toList();
+  }
+
+  Future<void> deleteAccelerationRun(int id) async {
+    if (_useMemory) {
+      _memoryAccelRuns.removeWhere((run) => run.id == id);
+      _memoryAccelSamples.remove(id);
+      return;
+    }
+    await _database.transaction((txn) async {
+      await txn.delete(
+        'acceleration_samples',
+        where: 'run_id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete('acceleration_runs', where: 'id = ?', whereArgs: [id]);
+    });
+  }
+
+  Future<void> deleteAllAccelerationRuns() async {
+    if (_useMemory) {
+      _memoryAccelRuns.clear();
+      _memoryAccelSamples.clear();
+      return;
+    }
+    await _database.transaction((txn) async {
+      await txn.delete('acceleration_samples');
+      await txn.delete('acceleration_runs');
+    });
+  }
+
+  static AccelerationSample _withRunId(AccelerationSample sample, int runId) =>
+      AccelerationSample(
+        runId: runId,
+        tMs: sample.tMs,
+        speedKmh: sample.speedKmh,
+        accuracyM: sample.accuracyM,
+        lat: sample.lat,
+        lon: sample.lon,
+      );
 
   /// If the app was killed mid-ride, the session row has no end time.
   /// Rebuild its summary from whatever samples were already persisted.

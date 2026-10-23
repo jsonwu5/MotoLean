@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'app.dart';
 import 'services/ride_store.dart';
+import 'services/settings_service.dart';
 import 'theme.dart';
 
 Future<void> main() async {
@@ -18,9 +19,12 @@ Future<void> main() async {
     ),
   );
   final store = RideStore();
+  final settings = SettingsService();
   try {
+    // 设置读取失败不应该阻止启动，SettingsService 内部已做兜底。
+    await settings.load();
     await store.init();
-    runApp(MotoLeanApp(store: store));
+    runApp(MotoLeanApp(store: store, settings: settings));
   } catch (error) {
     runApp(_StartupFailureApp(message: '$error'));
   }
