@@ -6,15 +6,23 @@
 
 ## 界面预览
 
-| 首页 | 记录前 |
+| 首页 | 零百加速 |
 | --- | --- |
-| ![首页](screenshots/home.png) | ![记录前](screenshots/record.png) |
+| ![首页](screenshots/home.png) | ![零百加速](screenshots/accel.png) |
 
-| 行程总结 | 数据详情 |
+| 加速成绩 | 记录准备 |
 | --- | --- |
-| ![行程总结](screenshots/summary.png) | ![数据详情](screenshots/summary-detail.png) |
+| ![加速成绩](screenshots/accel-history.png) | ![记录准备](screenshots/record.png) |
 
-> 截图为浏览器预览生成，路线与数据来自内置演示行程（合成数据）。
+| 行程总结 | 倾角分布与速度曲线 |
+| --- | --- |
+| ![行程总结](screenshots/summary.png) | ![倾角分布与速度曲线](screenshots/summary-detail.png) |
+
+| 设置 | 设置（零百与地图） |
+| --- | --- |
+| ![设置](screenshots/settings.png) | ![设置（零百与地图）](screenshots/settings-2.png) |
+
+> 截图为浏览器预览生成（780×1688），路线与数据来自内置演示行程（合成数据）。
 
 ## 功能
 
