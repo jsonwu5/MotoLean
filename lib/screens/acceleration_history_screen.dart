@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/acceleration_run.dart';
 import '../services/ride_store.dart';
@@ -79,10 +80,8 @@ class _AccelerationHistoryScreenState extends State<AccelerationHistoryScreen> {
   Future<void> _startNew() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => AccelerationScreen(
-          store: widget.store,
-          settings: widget.settings,
-        ),
+        builder: (_) =>
+            AccelerationScreen(store: widget.store, settings: widget.settings),
       ),
     );
     if (mounted) {
@@ -123,9 +122,8 @@ class _AccelerationHistoryScreenState extends State<AccelerationHistoryScreen> {
         await widget.store.deleteAccelerationRun(id);
       } catch (error) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('删除失败：$error')),
-          );
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('删除失败：$error')));
         }
         return false;
       }
@@ -163,22 +161,22 @@ class _AccelerationHistoryScreenState extends State<AccelerationHistoryScreen> {
               ),
             )
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Text(
-                      _error!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
                   ),
-                )
-              : _runs.isEmpty
-                  ? _EmptyState(onStart: _startNew)
-                  : _buildList(),
+                ),
+              ),
+            )
+          : _runs.isEmpty
+          ? _EmptyState(onStart: _startNew)
+          : _buildList(),
     );
   }
 
@@ -186,17 +184,15 @@ class _AccelerationHistoryScreenState extends State<AccelerationHistoryScreen> {
     final validRuns = _runs.where((run) => run.valid).toList();
     final best = validRuns.isEmpty
         ? null
-        : validRuns.reduce(
-            (a, b) => a.resultMs <= b.resultMs ? a : b,
-          );
+        : validRuns.reduce((a, b) => a.resultMs <= b.resultMs ? a : b);
     final best60 = validRuns
         .where((run) => run.result60Ms != null)
         .fold<AccelerationRun?>(null, (best, run) {
-      if (best == null) {
-        return run;
-      }
-      return run.result60Ms! < best.result60Ms! ? run : best;
-    });
+          if (best == null) {
+            return run;
+          }
+          return run.result60Ms! < best.result60Ms! ? run : best;
+        });
     final distanceUnit = widget.settings.distanceUnit;
 
     return RefreshIndicator(
@@ -209,10 +205,7 @@ class _AccelerationHistoryScreenState extends State<AccelerationHistoryScreen> {
           Row(
             children: [
               Expanded(
-                child: _SummaryCard(
-                  label: '测试次数',
-                  value: '${_runs.length}',
-                ),
+                child: _SummaryCard(label: '测试次数', value: '${_runs.length}'),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -238,27 +231,45 @@ class _AccelerationHistoryScreenState extends State<AccelerationHistoryScreen> {
           const SizedBox(height: 16),
           const Text(
             '全部成绩',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
           for (final run in _runs) ...[
             Dismissible(
-              key: ValueKey('accel_run_${run.id ?? run.startedAt.millisecondsSinceEpoch}'),
+              key: ValueKey(
+                'accel_run_${run.id ?? run.startedAt.millisecondsSinceEpoch}',
+              ),
               direction: DismissDirection.endToStart,
-              confirmDismiss: (_) => _confirmDelete(run),
+              confirmDismiss: (_) {
+                HapticFeedback.selectionClick();
+                return _confirmDelete(run);
+              },
               background: Container(
                 alignment: Alignment.centerRight,
                 padding: const EdgeInsets.only(right: 20),
                 decoration: BoxDecoration(
-                  color: AppColors.danger.withValues(alpha: 0.15),
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.danger.withValues(alpha: 0),
+                      AppColors.danger.withValues(alpha: 0.28),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: const Icon(
-                  Icons.delete_rounded,
-                  color: AppColors.danger,
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '删除',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.danger,
+                      ),
+                    ),
+                    SizedBox(width: 6),
+                    Icon(Icons.delete_rounded, color: AppColors.danger),
+                  ],
                 ),
               ),
               child: _RunCard(
@@ -374,10 +385,7 @@ class _RunCard extends StatelessWidget {
                         ],
                         if (!run.valid) ...[
                           const SizedBox(width: 6),
-                          const _Badge(
-                            label: '数据不足',
-                            color: AppColors.amber,
-                          ),
+                          const _Badge(label: '数据不足', color: AppColors.amber),
                         ],
                         if (run.rollout) ...[
                           const SizedBox(width: 6),

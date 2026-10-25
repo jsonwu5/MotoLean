@@ -14,6 +14,7 @@ import '../theme.dart';
 import '../utils/format.dart';
 import '../utils/ride_analytics.dart';
 import '../utils/units.dart';
+import '../widgets/motion.dart';
 import '../widgets/ride_map.dart';
 import '../widgets/stat_tile.dart';
 
@@ -97,9 +98,8 @@ class _SummaryScreenState extends State<SummaryScreen> {
       );
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('导出失败：$error')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('导出失败：$error')));
       }
     } finally {
       if (mounted) {
@@ -142,9 +142,8 @@ class _SummaryScreenState extends State<SummaryScreen> {
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('删除失败：$error')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('删除失败：$error')));
       }
     }
   }
@@ -176,20 +175,11 @@ class _SummaryScreenState extends State<SummaryScreen> {
               }
             },
             itemBuilder: (context) => const [
-              PopupMenuItem(
-                value: 'gpx',
-                child: Text('导出 GPX'),
-              ),
-              PopupMenuItem(
-                value: 'csv',
-                child: Text('导出 CSV'),
-              ),
+              PopupMenuItem(value: 'gpx', child: Text('导出 GPX')),
+              PopupMenuItem(value: 'csv', child: Text('导出 CSV')),
               PopupMenuItem(
                 value: 'delete',
-                child: Text(
-                  '删除行程',
-                  style: TextStyle(color: AppColors.danger),
-                ),
+                child: Text('删除行程', style: TextStyle(color: AppColors.danger)),
               ),
             ],
           ),
@@ -197,17 +187,43 @@ class _SummaryScreenState extends State<SummaryScreen> {
         ],
       ),
       body: _loading
-          ? const Center(
-              child: SizedBox(
-                width: 26,
-                height: 26,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
+          ? _buildLoadingShell()
           : _error != null || _session == null
-              ? _ErrorView(message: _error ?? '未知错误', onRetry: _load)
-              : _buildContent(_session!),
+          ? _ErrorView(message: _error ?? '未知错误', onRetry: _load)
+          : _buildContent(_session!),
     );
+  }
+
+  /// 加载中的骨架：地图区域首帧就位，保证首页卡片的 Hero 过渡有落点。
+  Widget _buildLoadingShell() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
+      children: [
+        const SizedBox(height: 40),
+        _wrapMapHero(
+          Container(
+            height: 250,
+            decoration: cardDecoration(color: AppColors.surfaceHigh),
+          ),
+        ),
+        const SizedBox(height: 36),
+        const Center(
+          child: SizedBox(
+            width: 26,
+            height: 26,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// 首页行程卡片 → 总结页地图的共享元素过渡；减弱动效时退化为普通容器。
+  Widget _wrapMapHero(Widget child) {
+    if (AppMotion.reduced(context)) {
+      return child;
+    }
+    return Hero(tag: 'session-hero-${widget.sessionId}', child: child);
   }
 
   Widget _buildContent(RideSession session) {
@@ -230,255 +246,298 @@ class _SummaryScreenState extends State<SummaryScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    formatDateWithWeekday(session.startedAt),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textTertiary,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Text(
-                        '本次骑行',
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -1,
-                        ),
+        StaggerIn(
+          index: 0,
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      formatDateWithWeekday(session.startedAt),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textTertiary,
+                        letterSpacing: 0.4,
                       ),
-                      if (session.isDemo) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 3,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Text(
+                          '本次骑行',
+                          style: TextStyle(
+                            fontSize: 30,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -1,
                           ),
-                          decoration: BoxDecoration(
-                            color: AppColors.accentDark,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            '演示',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.accent,
+                        ),
+                        if (session.isDemo) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentDark,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              '演示',
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.accent,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    formatClock(session.startedAt),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      fontFeatures: tabularFigures,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    formatDuration(session.durationS),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: tabularFigures,
+                    ),
                   ),
                 ],
               ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  formatClock(session.startedAt),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
-                    fontFeatures: tabularFigures,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  formatDuration(session.durationS),
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    fontFeatures: tabularFigures,
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
         if (session.isDemo && session.note != null) ...[
           const SizedBox(height: 8),
           Text(
             session.note!,
-            style: const TextStyle(
-              fontSize: 10,
-              color: AppColors.textTertiary,
-            ),
+            style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
           ),
         ],
         const SizedBox(height: 18),
-        RemoteMapCard(
-          points: mapPoints,
-          hasTrack: mapPoints.length > 1,
-          mapStyle: widget.settings.mapStyle,
+        StaggerIn(
+          index: 1,
+          child: _wrapMapHero(
+            RemoteMapCard(
+              points: mapPoints,
+              hasTrack: mapPoints.length > 1,
+              mapStyle: widget.settings.mapStyle,
+            ),
+          ),
         ),
         const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: StatTile(
-                label: '最大右倾',
-                value: session.maxLeanRightDeg > 0
-                    ? '${session.maxLeanRightDeg.round()}°'
-                    : '—',
-                accent: true,
+        StaggerIn(
+          index: 2,
+          child: Row(
+            children: [
+              Expanded(
+                child: StatTile(
+                  label: '最大右倾',
+                  value: session.maxLeanRightDeg > 0
+                      ? '${session.maxLeanRightDeg.round()}°'
+                      : '—',
+                  accent: true,
+                  countUp: session.maxLeanRightDeg > 0
+                      ? session.maxLeanRightDeg
+                      : null,
+                  countFormat: (v) => '${v.round()}°',
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: StatTile(
-                label: '最大左倾',
-                value: session.maxLeanLeftDeg > 0
-                    ? '${session.maxLeanLeftDeg.round()}°'
-                    : '—',
+              const SizedBox(width: 8),
+              Expanded(
+                child: StatTile(
+                  label: '最大左倾',
+                  value: session.maxLeanLeftDeg > 0
+                      ? '${session.maxLeanLeftDeg.round()}°'
+                      : '—',
+                  countUp: session.maxLeanLeftDeg > 0
+                      ? session.maxLeanLeftDeg
+                      : null,
+                  countFormat: (v) => '${v.round()}°',
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: StatTile(
-                label: '里程',
-                value: formatDistanceWithUnit(session.distanceM, distanceUnit),
+        StaggerIn(
+          index: 3,
+          child: Row(
+            children: [
+              Expanded(
+                child: StatTile(
+                  label: '里程',
+                  value: formatDistanceWithUnit(
+                    session.distanceM,
+                    distanceUnit,
+                  ),
+                  countUp: session.distanceM,
+                  countFormat: (v) => formatDistanceWithUnit(v, distanceUnit),
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: StatTile(
-                label: '骑行时长',
-                value: formatDuration(session.durationS),
+              const SizedBox(width: 8),
+              Expanded(
+                child: StatTile(
+                  label: '骑行时长',
+                  value: formatDuration(session.durationS),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: StatTile(
-                label: '均速',
-                value: formatSpeedValue(session.avgSpeedMps, unit),
-                unit: unit.label,
+        StaggerIn(
+          index: 4,
+          child: Row(
+            children: [
+              Expanded(
+                child: StatTile(
+                  label: '均速',
+                  value: formatSpeedValue(session.avgSpeedMps, unit),
+                  unit: unit.label,
+                  countUp: session.avgSpeedMps,
+                  countFormat: (v) => formatSpeedValue(v, unit),
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: StatTile(
-                label: '极速',
-                value: formatSpeedValue(session.maxSpeedMps, unit),
-                unit: unit.label,
+              const SizedBox(width: 8),
+              Expanded(
+                child: StatTile(
+                  label: '极速',
+                  value: formatSpeedValue(session.maxSpeedMps, unit),
+                  unit: unit.label,
+                  countUp: session.maxSpeedMps,
+                  countFormat: (v) => formatSpeedValue(v, unit),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         const SizedBox(height: 14),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            _HighlightChip(
-              icon: Icons.turn_right_rounded,
-              label: '过弯',
-              value: '$corners 次',
-            ),
-            _HighlightChip(
-              icon: Icons.speed_rounded,
-              label: '超 30°',
-              value: formatDuration(above30),
-            ),
-            _HighlightChip(
-              icon: Icons.terrain_rounded,
-              label: '爬升',
-              value: formatElevationWithUnit(
-                session.elevationGainM,
-                elevationUnit,
+        StaggerIn(
+          index: 5,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _HighlightChip(
+                icon: Icons.turn_right_rounded,
+                label: '过弯',
+                value: '$corners 次',
               ),
-            ),
-            _HighlightChip(
-              icon: Icons.timeline_rounded,
-              label: '采样',
-              value: '${_samples.length} 秒',
-            ),
-          ],
+              _HighlightChip(
+                icon: Icons.speed_rounded,
+                label: '超 30°',
+                value: formatDuration(above30),
+              ),
+              _HighlightChip(
+                icon: Icons.terrain_rounded,
+                label: '爬升',
+                value: formatElevationWithUnit(
+                  session.elevationGainM,
+                  elevationUnit,
+                ),
+              ),
+              _HighlightChip(
+                icon: Icons.timeline_rounded,
+                label: '采样',
+                value: '${_samples.length} 秒',
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 24),
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: cardDecoration(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '倾角分布',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                '各区间占本次记录时长的比例（1 Hz 采样）',
-                style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
-              ),
-              const SizedBox(height: 18),
-              _LeanBands(bands: bands),
-            ],
+        StaggerIn(
+          index: 6,
+          child: Container(
+            padding: const EdgeInsets.all(18),
+            decoration: cardDecoration(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '倾角分布',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  '各区间占本次记录时长的比例（1 Hz 采样）',
+                  style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                ),
+                const SizedBox(height: 18),
+                _LeanBands(bands: bands),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
-          decoration: cardDecoration(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '速度曲线',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'GPS 速度 · ${unit.label}',
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textTertiary,
+        StaggerIn(
+          index: 7,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
+            decoration: cardDecoration(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '速度曲线',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
-              ),
-              const SizedBox(height: 16),
-              _SpeedChart(
-                points: RideAnalytics.speedSeries(_samples),
-                unit: unit,
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  'GPS 速度 · ${unit.label}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _SpeedChart(
+                  points: RideAnalytics.speedSeries(_samples),
+                  unit: unit,
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _exporting ? null : () => _export(gpx: true),
-                icon: const Icon(Icons.file_download_outlined, size: 18),
-                label: const Text('导出 GPX'),
+        StaggerIn(
+          index: 8,
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _exporting ? null : () => _export(gpx: true),
+                  icon: const Icon(Icons.file_download_outlined, size: 18),
+                  label: const Text('导出 GPX'),
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _exporting ? null : () => _export(gpx: false),
-                icon: const Icon(Icons.table_chart_outlined, size: 18),
-                label: const Text('导出 CSV'),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _exporting ? null : () => _export(gpx: false),
+                  icon: const Icon(Icons.table_chart_outlined, size: 18),
+                  label: const Text('导出 CSV'),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         if (_exporting) ...[
           const SizedBox(height: 10),
@@ -539,6 +598,7 @@ class RemoteMapCard extends StatelessWidget {
             height: 250,
             colored: true,
             mapStyle: mapStyle,
+            animateIn: true,
           )
         else
           Container(
@@ -548,10 +608,7 @@ class RemoteMapCard extends StatelessWidget {
             child: const Center(
               child: Text(
                 '本次行程没有可用的 GPS 轨迹',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textTertiary,
-                ),
+                style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
               ),
             ),
           ),
@@ -593,10 +650,7 @@ class _LegendItem extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 10,
-            color: AppColors.textTertiary,
-          ),
+          style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
         ),
       ],
     );
@@ -630,10 +684,7 @@ class _HighlightChip extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             '$label ',
-            style: const TextStyle(
-              fontSize: 10,
-              color: AppColors.textTertiary,
-            ),
+            style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
           ),
           Text(
             value,
@@ -686,15 +737,25 @@ class _LeanBands extends StatelessWidget {
                       height: 8,
                       color: AppColors.surfaceHighest,
                       alignment: Alignment.centerLeft,
-                      child: FractionallySizedBox(
-                        widthFactor:
-                            maxFraction == 0 ? 0.0 : band.fraction / maxFraction,
-                        child: Container(
-                          color: band.lowerDeg == 0
-                              ? const Color(0xFF56606D)
-                              : leanColor(
-                                  (band.lowerDeg + band.upperDeg) / 2,
-                                ),
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(
+                          end: maxFraction == 0
+                              ? 0.0
+                              : band.fraction / maxFraction,
+                        ),
+                        duration: AppMotion.reduced(context)
+                            ? Duration.zero
+                            : const Duration(milliseconds: 700),
+                        curve: AppMotion.curve,
+                        builder: (context, factor, _) => FractionallySizedBox(
+                          widthFactor: factor.clamp(0.0, 1.0),
+                          child: Container(
+                            color: band.lowerDeg == 0
+                                ? const Color(0xFF56606D)
+                                : leanColor(
+                                    (band.lowerDeg + band.upperDeg) / 2,
+                                  ),
+                          ),
                         ),
                       ),
                     ),
@@ -721,14 +782,32 @@ class _LeanBands extends StatelessWidget {
   }
 }
 
-class _SpeedChart extends StatelessWidget {
+class _SpeedChart extends StatefulWidget {
   const _SpeedChart({required this.points, required this.unit});
 
   final List<SpeedPoint> points;
   final SpeedUnit unit;
 
   @override
+  State<_SpeedChart> createState() => _SpeedChartState();
+}
+
+class _SpeedChartState extends State<_SpeedChart>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 700),
+  )..forward();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final points = widget.points;
     if (points.length < 2) {
       return const SizedBox(
         height: 120,
@@ -740,6 +819,7 @@ class _SpeedChart extends StatelessWidget {
         ),
       );
     }
+    final unit = widget.unit;
     double toUnit(double kmh) => unit.fromMps(kmh / 3.6);
     final maxSpeed = points.fold<double>(
       0.0,
@@ -750,90 +830,104 @@ class _SpeedChart extends StatelessWidget {
     final intervalY = (maxY / 4).clamp(5, 100).toDouble();
     final intervalX = math.max(1.0, duration / 3);
 
-    return SizedBox(
-      height: 176,
-      child: LineChart(
-        LineChartData(
-          minX: 0,
-          maxX: duration,
-          minY: 0,
-          maxY: maxY,
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: intervalY,
-            getDrawingHorizontalLine: (value) => const FlLine(
-              color: AppColors.divider,
-              strokeWidth: 1,
-            ),
-          ),
-          titlesData: FlTitlesData(
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 32,
-                interval: intervalY,
-                getTitlesWidget: (value, meta) => Text(
-                  value.round().toString(),
-                  style: const TextStyle(
-                    fontSize: 9,
-                    color: AppColors.textTertiary,
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        // 曲线从左到右「画」出来：按进度截断数据点，坐标轴保持稳定。
+        final progress = AppMotion.reduced(context)
+            ? 1.0
+            : AppMotion.curve.transform(_controller.value);
+        final count = (1 + progress * (points.length - 1)).ceil().clamp(
+          2,
+          points.length,
+        );
+        final visible = points.sublist(0, count);
+
+        return SizedBox(
+          height: 176,
+          child: LineChart(
+            duration: Duration.zero,
+            LineChartData(
+              minX: 0,
+              maxX: duration,
+              minY: 0,
+              maxY: maxY,
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: intervalY,
+                getDrawingHorizontalLine: (value) =>
+                    const FlLine(color: AppColors.divider, strokeWidth: 1),
+              ),
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 32,
+                    interval: intervalY,
+                    getTitlesWidget: (value, meta) => Text(
+                      value.round().toString(),
+                      style: const TextStyle(
+                        fontSize: 9,
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 24,
-                interval: intervalX,
-                getTitlesWidget: (value, meta) => Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(
-                    formatDuration(value.round()),
-                    style: const TextStyle(
-                      fontSize: 9,
-                      color: AppColors.textTertiary,
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 24,
+                    interval: intervalX,
+                    getTitlesWidget: (value, meta) => Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        formatDuration(value.round()),
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
+              borderData: FlBorderData(show: false),
+              lineTouchData: const LineTouchData(enabled: false),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: [
+                    for (final point in visible)
+                      FlSpot(point.tSeconds, toUnit(point.speedKmh)),
+                  ],
+                  isCurved: true,
+                  curveSmoothness: 0.22,
+                  barWidth: 2.5,
+                  color: AppColors.accent,
+                  dotData: const FlDotData(show: false),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppColors.accent.withValues(alpha: 0.18),
+                        AppColors.accent.withValues(alpha: 0),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          borderData: FlBorderData(show: false),
-          lineTouchData: const LineTouchData(enabled: false),
-          lineBarsData: [
-            LineChartBarData(
-              spots: [
-                for (final point in points)
-                  FlSpot(point.tSeconds, toUnit(point.speedKmh)),
-              ],
-              isCurved: true,
-              curveSmoothness: 0.22,
-              barWidth: 2.5,
-              color: AppColors.accent,
-              dotData: const FlDotData(show: false),
-              belowBarData: BarAreaData(
-                show: true,
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.accent.withValues(alpha: 0.18),
-                    AppColors.accent.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

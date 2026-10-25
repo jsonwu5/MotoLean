@@ -6,7 +6,10 @@ import '../theme.dart';
 import '../utils/format.dart';
 
 /// Semicircular lean angle gauge. Positive values are right-hand lean.
-class LeanGauge extends StatelessWidget {
+///
+/// 50 Hz 的原始倾角在 widget 层做短窗阻尼，指针像真仪表一样有惯性地摆动；
+/// 左右换向时强调色做渐变过渡而不是硬切。
+class LeanGauge extends StatefulWidget {
   const LeanGauge({
     super.key,
     required this.leanDeg,
@@ -21,87 +24,143 @@ class LeanGauge extends StatelessWidget {
   final double height;
 
   @override
+  State<LeanGauge> createState() => _LeanGaugeState();
+}
+
+class _LeanGaugeState extends State<LeanGauge>
+    with SingleTickerProviderStateMixin {
+  /// 指针阻尼窗口：足够短以跟上快速压弯，又能吞掉传感器抖动。
+  static const _damping = Duration(milliseconds: 90);
+
+  late double _displayedLean = widget.leanDeg;
+  late final AnimationController _controller = AnimationController(vsync: this);
+  Animation<double> _leanAnimation = const AlwaysStoppedAnimation<double>(0);
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(() {
+      setState(() => _displayedLean = _leanAnimation.value);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant LeanGauge oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.leanDeg == widget.leanDeg) {
+      return;
+    }
+    if (AppMotion.reduced(context)) {
+      _controller.stop();
+      setState(() => _displayedLean = widget.leanDeg);
+      return;
+    }
+    _leanAnimation = Tween<double>(
+      begin: _displayedLean,
+      end: widget.leanDeg,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.linear));
+    _controller
+      ..duration = _damping
+      ..reset()
+      ..forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final leanDeg = _displayedLean;
     final leaningRight = leanDeg >= 1;
     final leaningLeft = leanDeg <= -1;
-    final activeColor = leaningLeft ? AppColors.cyan : AppColors.accent;
+    final targetColor = leaningLeft ? AppColors.cyan : AppColors.accent;
+    final reduced = AppMotion.reduced(context);
     final direction = leaningRight
         ? '右倾'
         : leaningLeft
-            ? '左倾'
-            : '直立';
+        ? '左倾'
+        : '直立';
 
-    return SizedBox(
-      height: height,
-      width: double.infinity,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _GaugePainter(
-                leanDeg: leanDeg,
-                maxLeftDeg: maxLeftDeg,
-                maxRightDeg: maxRightDeg,
-                activeColor: activeColor,
+    return TweenAnimationBuilder<Color?>(
+      tween: ColorTween(end: targetColor),
+      duration: reduced ? Duration.zero : AppMotion.med,
+      curve: AppMotion.curve,
+      builder: (context, activeColor, _) {
+        final color = activeColor ?? targetColor;
+        return SizedBox(
+          height: widget.height,
+          width: double.infinity,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _GaugePainter(
+                    leanDeg: leanDeg,
+                    maxLeftDeg: widget.maxLeftDeg,
+                    maxRightDeg: widget.maxRightDeg,
+                    activeColor: color,
+                  ),
+                ),
               ),
-            ),
-          ),
-          Positioned(
-            top: height * 0.30,
-            left: 0,
-            right: 0,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  formatLean(leanDeg),
-                  style: TextStyle(
-                    fontSize: 52,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -2,
-                    height: 1,
-                    color: leaningLeft
-                        ? AppColors.cyan
-                        : leaningRight
-                            ? AppColors.accent
+              Positioned(
+                top: widget.height * 0.30,
+                left: 0,
+                right: 0,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      formatLean(leanDeg),
+                      style: TextStyle(
+                        fontSize: 52,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -2,
+                        height: 1,
+                        color: leaningLeft || leaningRight
+                            ? color
                             : AppColors.textPrimary,
-                    fontFeatures: tabularFigures,
-                  ),
+                        fontFeatures: tabularFigures,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      direction,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        letterSpacing: 4,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  direction,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    letterSpacing: 4,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
+              ),
+              Positioned(
+                left: 26,
+                bottom: 24,
+                child: _LimitLabel(
+                  label: 'L',
+                  value: widget.maxLeftDeg,
+                  color: AppColors.cyan,
                 ),
-              ],
-            ),
+              ),
+              Positioned(
+                right: 26,
+                bottom: 24,
+                child: _LimitLabel(
+                  label: 'R',
+                  value: widget.maxRightDeg,
+                  color: AppColors.accent,
+                ),
+              ),
+            ],
           ),
-          Positioned(
-            left: 26,
-            bottom: 24,
-            child: _LimitLabel(
-              label: 'L',
-              value: maxLeftDeg,
-              color: AppColors.cyan,
-            ),
-          ),
-          Positioned(
-            right: 26,
-            bottom: 24,
-            child: _LimitLabel(
-              label: 'R',
-              value: maxRightDeg,
-              color: AppColors.accent,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -183,8 +242,10 @@ class _GaugePainter extends CustomPainter {
     for (var i = 0; i <= 10; i++) {
       final angle = start + sweep * i / 10;
       final isCenter = i == 5;
-      final outer = center + Offset(math.cos(angle), math.sin(angle)) * (radius - 20);
-      final inner = center +
+      final outer =
+          center + Offset(math.cos(angle), math.sin(angle)) * (radius - 20);
+      final inner =
+          center +
           Offset(math.cos(angle), math.sin(angle)) *
               (radius - (isCenter ? 34 : 28));
       canvas.drawLine(
@@ -228,7 +289,8 @@ class _GaugePainter extends CustomPainter {
     }
 
     // Indicator dot.
-    final dot = center + Offset(math.cos(valueAngle), math.sin(valueAngle)) * radius;
+    final dot =
+        center + Offset(math.cos(valueAngle), math.sin(valueAngle)) * radius;
     canvas.drawCircle(
       dot,
       9,
@@ -248,11 +310,14 @@ class _GaugePainter extends CustomPainter {
       return;
     }
     final clamped = degrees.clamp(-_maxLean, _maxLean).toDouble();
-    final angle = (_startDeg + (_sweepDeg / 2) * (1 + clamped / _maxLean)) *
+    final angle =
+        (_startDeg + (_sweepDeg / 2) * (1 + clamped / _maxLean)) *
         math.pi /
         180;
-    final inner = center + Offset(math.cos(angle), math.sin(angle)) * (radius - 9);
-    final outer = center + Offset(math.cos(angle), math.sin(angle)) * (radius + 9);
+    final inner =
+        center + Offset(math.cos(angle), math.sin(angle)) * (radius - 9);
+    final outer =
+        center + Offset(math.cos(angle), math.sin(angle)) * (radius + 9);
     canvas.drawLine(
       inner,
       outer,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../services/acceleration_recorder.dart';
@@ -9,6 +10,7 @@ import '../services/ride_store.dart';
 import '../services/settings_service.dart';
 import '../theme.dart';
 import '../utils/units.dart';
+import '../widgets/motion.dart';
 import 'acceleration_result_screen.dart';
 
 class AccelerationScreen extends StatefulWidget {
@@ -29,6 +31,8 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
   late final AccelerationRecorder _recorder;
   bool _screenAwake = false;
   bool _handlingBack = false;
+  int? _lastCountdown;
+  AccelerationState? _prevState;
 
   @override
   void initState() {
@@ -55,7 +59,25 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
     if (!mounted) {
       return;
     }
-    final running = _recorder.state == AccelerationState.running ||
+    final state = _recorder.state;
+    // 倒计时逐秒轻触；冲线进入结果时重触反馈。
+    if (state == AccelerationState.countdown) {
+      final remaining = _recorder.countdownRemaining;
+      if (_lastCountdown != remaining) {
+        _lastCountdown = remaining;
+        HapticFeedback.selectionClick();
+      }
+    } else {
+      _lastCountdown = null;
+    }
+    if (_prevState != state) {
+      if (state == AccelerationState.finished) {
+        HapticFeedback.heavyImpact();
+      }
+      _prevState = state;
+    }
+    final running =
+        _recorder.state == AccelerationState.running ||
         _recorder.state == AccelerationState.countdown;
     if (running && !_screenAwake) {
       _screenAwake = true;
@@ -222,14 +244,16 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                 const _InfoCard(
                   icon: Icons.speed_rounded,
                   title: '成绩口径',
-                  body: '默认从静止起算。开启「1 英尺 rollout」后，计时从车辆移动约 30 cm 开始，'
+                  body:
+                      '默认从静止起算。开启「1 英尺 rollout」后，计时从车辆移动约 30 cm 开始，'
                       '成绩会比静止口径短约 0.2–0.4 秒。',
                 ),
                 const SizedBox(height: 10),
                 const _InfoCard(
                   icon: Icons.satellite_alt_rounded,
                   title: '数据来源',
-                  body: 'GPS 多普勒测速，更新率约 1 Hz。成绩通过相邻采样点插值计算，'
+                  body:
+                      'GPS 多普勒测速，更新率约 1 Hz。成绩通过相邻采样点插值计算，'
                       '手机误差约 ±0.1–0.3 秒，适合同机对比，不适合与专业设备比绝对值。',
                 ),
                 const SizedBox(height: 10),
@@ -240,10 +264,12 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   danger: true,
                 ),
                 const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: _recorder.prepare,
-                  icon: const Icon(Icons.play_arrow_rounded, size: 24),
-                  label: const Text('开始检测'),
+                PressableScale(
+                  child: FilledButton.icon(
+                    onPressed: _recorder.prepare,
+                    icon: const Icon(Icons.play_arrow_rounded, size: 24),
+                    label: const Text('开始检测'),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Center(
@@ -290,7 +316,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                             value: accuracy == null
                                 ? null
                                 : (1 - (accuracy / 40).clamp(0.0, 1.0))
-                                    .toDouble(),
+                                      .toDouble(),
                             strokeWidth: 6,
                             backgroundColor: AppColors.surfaceHigh,
                             strokeCap: StrokeCap.round,
@@ -343,7 +369,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                     ready
                         ? '车辆保持静止，点击开始后倒计时。'
                         : '精度需要优于 ±${AccelerationRecorder.readyAccuracyM.round()} m，'
-                            '请到开阔地带并等待几秒。',
+                              '请到开阔地带并等待几秒。',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 12,
@@ -352,16 +378,15 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                     ),
                   ),
                   const SizedBox(height: 26),
-                  FilledButton.icon(
-                    onPressed: ready ? _recorder.startCountdown : null,
-                    icon: const Icon(Icons.play_arrow_rounded, size: 22),
-                    label: const Text('开始'),
+                  PressableScale(
+                    child: FilledButton.icon(
+                      onPressed: ready ? _recorder.startCountdown : null,
+                      icon: const Icon(Icons.play_arrow_rounded, size: 22),
+                      label: const Text('开始'),
+                    ),
                   ),
                   const SizedBox(height: 10),
-                  TextButton(
-                    onPressed: _handleBack,
-                    child: const Text('取消'),
-                  ),
+                  TextButton(onPressed: _handleBack, child: const Text('取消')),
                 ],
               ),
             ),
@@ -455,16 +480,15 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: _recorder.startCountdown,
-                  icon: const Icon(Icons.timer_rounded, size: 22),
-                  label: const Text('开始测试'),
+                PressableScale(
+                  child: FilledButton.icon(
+                    onPressed: _recorder.startCountdown,
+                    icon: const Icon(Icons.timer_rounded, size: 22),
+                    label: const Text('开始测试'),
+                  ),
                 ),
                 const SizedBox(height: 10),
-                TextButton(
-                  onPressed: _handleBack,
-                  child: const Text('取消'),
-                ),
+                TextButton(onPressed: _handleBack, child: const Text('取消')),
               ],
             ),
           ),
@@ -474,19 +498,35 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
   }
 
   Widget _buildCountdown() {
+    final reduced = AppMotion.reduced(context);
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            '${_recorder.countdownRemaining}',
-            style: const TextStyle(
-              fontSize: 140,
-              height: 1,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -6,
-              color: AppColors.accent,
-              fontFeatures: tabularFigures,
+          AnimatedSwitcher(
+            duration: reduced ? AppMotion.fast : AppMotion.med,
+            switchInCurve: AppMotion.curve,
+            transitionBuilder: (child, animation) {
+              final faded = FadeTransition(opacity: animation, child: child);
+              if (reduced) {
+                return faded;
+              }
+              return ScaleTransition(
+                scale: Tween<double>(begin: 1.3, end: 1).animate(animation),
+                child: faded,
+              );
+            },
+            child: Text(
+              '${_recorder.countdownRemaining}',
+              key: ValueKey(_recorder.countdownRemaining),
+              style: const TextStyle(
+                fontSize: 140,
+                height: 1,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -6,
+                color: AppColors.accent,
+                fontFeatures: tabularFigures,
+              ),
             ),
           ),
           const SizedBox(height: 18),
@@ -607,7 +647,9 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                       value: _recorder.progress,
                       minHeight: 10,
                       backgroundColor: AppColors.surfaceHigh,
-                      valueColor: const AlwaysStoppedAnimation(AppColors.accent),
+                      valueColor: const AlwaysStoppedAnimation(
+                        AppColors.accent,
+                      ),
                     ),
                   ),
                 ),
@@ -673,10 +715,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
           _TopBar(onClose: _handleBack, title: '测试结束'),
           const Expanded(
             child: Center(
-              child: Text(
-                '没有生成结果',
-                style: TextStyle(fontSize: 16),
-              ),
+              child: Text('没有生成结果', style: TextStyle(fontSize: 16)),
             ),
           ),
         ],
@@ -694,74 +733,103 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
             child: Column(
               children: [
                 if (!valid)
-                  _ResultBanner(
-                    text: result.invalidReason ?? '成绩未达标，本次不计入记录',
-                  ),
+                  _ResultBanner(text: result.invalidReason ?? '成绩未达标，本次不计入记录'),
                 const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                  decoration: cardDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF202B0E), Color(0xFF121418)],
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        _formatTarget(unit),
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 1, end: 0),
+                  duration: AppMotion.reduced(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 900),
+                  curve: AppMotion.curve,
+                  builder: (context, glow, child) => Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.accent.withValues(
+                            alpha: 0.32 * glow,
+                          ),
+                          blurRadius: 52 * glow,
+                          spreadRadius: 2 * glow,
                         ),
+                      ],
+                    ),
+                    child: child,
+                  ),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+                    decoration: cardDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF202B0E), Color(0xFF121418)],
                       ),
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            seconds == null
-                                ? '—'
-                                : seconds.toStringAsFixed(2),
-                            style: TextStyle(
-                              fontSize: 88,
-                              height: 0.95,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -4,
-                              color: valid
-                                  ? AppColors.accent
-                                  : AppColors.textTertiary,
-                              fontFeatures: tabularFigures,
-                            ),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: 10, left: 4),
-                            child: Text(
-                              '秒',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (_recorder.rollout) ...[
-                        const SizedBox(height: 4),
-                        const Text(
-                          '含 1 英尺 rollout',
-                          style: TextStyle(
-                            fontSize: 10,
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          _formatTarget(unit),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                             color: AppColors.textSecondary,
                           ),
                         ),
+                        const SizedBox(height: 6),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.85, end: 1),
+                          duration: AppMotion.reduced(context)
+                              ? Duration.zero
+                              : const Duration(milliseconds: 550),
+                          curve: Curves.easeOutBack,
+                          builder: (context, scale, child) =>
+                              Transform.scale(scale: scale, child: child),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                seconds == null
+                                    ? '—'
+                                    : seconds.toStringAsFixed(2),
+                                style: TextStyle(
+                                  fontSize: 88,
+                                  height: 0.95,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -4,
+                                  color: valid
+                                      ? AppColors.accent
+                                      : AppColors.textTertiary,
+                                  fontFeatures: tabularFigures,
+                                ),
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 10, left: 4),
+                                child: Text(
+                                  '秒',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_recorder.rollout) ...[
+                          const SizedBox(height: 4),
+                          const Text(
+                            '含 1 英尺 rollout',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -809,10 +877,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   label: const Text('再测一次'),
                 ),
                 const SizedBox(height: 8),
-                TextButton(
-                  onPressed: _handleBack,
-                  child: const Text('返回'),
-                ),
+                TextButton(onPressed: _handleBack, child: const Text('返回')),
                 if (_recorder.errorMessage != null) ...[
                   const SizedBox(height: 12),
                   Text(
@@ -856,10 +921,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                 const SizedBox(height: 18),
                 const Text(
                   '无法开始测试',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 10),
                 Text(
@@ -884,10 +946,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   label: const Text('打开系统设置'),
                 ),
                 const SizedBox(height: 6),
-                TextButton(
-                  onPressed: _handleBack,
-                  child: const Text('返回'),
-                ),
+                TextButton(onPressed: _handleBack, child: const Text('返回')),
               ],
             ),
           ),
@@ -1072,10 +1131,7 @@ class _MiniStat extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 10,
-              color: AppColors.textTertiary,
-            ),
+            style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
           ),
         ],
       ),
@@ -1100,7 +1156,11 @@ class _ResultBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, size: 18, color: AppColors.amber),
+          const Icon(
+            Icons.info_outline_rounded,
+            size: 18,
+            color: AppColors.amber,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
 abstract final class AppColors {
@@ -18,6 +19,28 @@ abstract final class AppColors {
 }
 
 const List<FontFeature> tabularFigures = [FontFeature.tabularFigures()];
+
+/// 全局动效规格：统一时长与曲线，并尊重系统「减弱动态效果」。
+abstract final class AppMotion {
+  /// 微交互（按压、开关）。
+  static const fast = Duration(milliseconds: 150);
+
+  /// 卡片与状态切换。
+  static const med = Duration(milliseconds: 280);
+
+  /// 入场编排。
+  static const slow = Duration(milliseconds: 500);
+
+  /// 入场曲线。
+  static const curve = Curves.easeOutCubic;
+
+  /// 离场曲线。
+  static const curveExit = Curves.easeInCubic;
+
+  /// 系统是否开启了「减弱动态效果」。
+  static bool reduced(BuildContext context) =>
+      MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+}
 
 ThemeData buildAppTheme() {
   final base = ThemeData(
@@ -95,9 +118,7 @@ ThemeData buildAppTheme() {
         backgroundColor: AppColors.accent,
         foregroundColor: const Color(0xFF101400),
         minimumSize: const Size.fromHeight(56),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         textStyle: const TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.w800,
@@ -110,9 +131,7 @@ ThemeData buildAppTheme() {
         foregroundColor: AppColors.textPrimary,
         minimumSize: const Size.fromHeight(52),
         side: const BorderSide(color: AppColors.divider),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
       ),
     ),
@@ -159,6 +178,16 @@ ThemeData buildAppTheme() {
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: AppColors.accent,
     ),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: _FadeUpPageTransitionsBuilder(),
+        TargetPlatform.linux: _FadeUpPageTransitionsBuilder(),
+        TargetPlatform.windows: _FadeUpPageTransitionsBuilder(),
+        TargetPlatform.fuchsia: _FadeUpPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+      },
+    ),
   );
 }
 
@@ -166,10 +195,40 @@ BoxDecoration cardDecoration({
   Color color = AppColors.surface,
   double radius = 22,
   Gradient? gradient,
-}) =>
-    BoxDecoration(
-      color: gradient == null ? color : null,
-      gradient: gradient,
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+}) => BoxDecoration(
+  color: gradient == null ? color : null,
+  gradient: gradient,
+  borderRadius: BorderRadius.circular(radius),
+  border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+);
+
+/// 克制的淡出 + 轻微上滑页面转场（iOS/macOS 保持原生侧滑返回手势）。
+class _FadeUpPageTransitionsBuilder extends PageTransitionsBuilder {
+  const _FadeUpPageTransitionsBuilder();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: AppMotion.curve,
+      reverseCurve: AppMotion.curveExit,
     );
+    final fade = FadeTransition(opacity: curved, child: child);
+    if (AppMotion.reduced(context)) {
+      return fade;
+    }
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(0, 0.035),
+        end: Offset.zero,
+      ).animate(curved),
+      child: fade,
+    );
+  }
+}

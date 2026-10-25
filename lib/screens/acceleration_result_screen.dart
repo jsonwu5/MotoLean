@@ -90,9 +90,8 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
       );
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('分享失败：$error')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('分享失败：$error')));
       }
     }
   }
@@ -131,9 +130,8 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('删除失败：$error')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('删除失败：$error')));
       }
     }
   }
@@ -186,8 +184,8 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
               ),
             )
           : _error != null || run == null
-              ? _ErrorView(message: _error ?? '未知错误', onRetry: _load)
-              : _buildContent(run),
+          ? _ErrorView(message: _error ?? '未知错误', onRetry: _load)
+          : _buildContent(run),
     );
   }
 
@@ -255,33 +253,44 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
                 ),
               ),
               const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    run.resultSeconds.toStringAsFixed(2),
-                    style: TextStyle(
-                      fontSize: 84,
-                      height: 0.95,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -4,
-                      color: run.valid ? AppColors.accent : AppColors.textTertiary,
-                      fontFeatures: tabularFigures,
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 10, left: 4),
-                    child: Text(
-                      '秒',
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.85, end: 1),
+                duration: AppMotion.reduced(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 550),
+                curve: Curves.easeOutBack,
+                builder: (context, scale, child) =>
+                    Transform.scale(scale: scale, child: child),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      run.resultSeconds.toStringAsFixed(2),
                       style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
+                        fontSize: 84,
+                        height: 0.95,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -4,
+                        color: run.valid
+                            ? AppColors.accent
+                            : AppColors.textTertiary,
+                        fontFeatures: tabularFigures,
                       ),
                     ),
-                  ),
-                ],
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 10, left: 4),
+                      child: Text(
+                        '秒',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               if (run.rollout) ...[
                 const SizedBox(height: 4),
@@ -414,10 +423,7 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
         Center(
           child: Text(
             '目标单位：km/h · 显示单位：${unit.label}',
-            style: const TextStyle(
-              fontSize: 9,
-              color: AppColors.textTertiary,
-            ),
+            style: const TextStyle(fontSize: 9, color: AppColors.textTertiary),
           ),
         ),
       ],
@@ -481,10 +487,7 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 10,
-              color: AppColors.textTertiary,
-            ),
+            style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
           ),
         ],
       ),

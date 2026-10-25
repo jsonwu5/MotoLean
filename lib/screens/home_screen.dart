@@ -8,6 +8,7 @@ import '../services/settings_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../utils/units.dart';
+import '../widgets/motion.dart';
 import 'acceleration_history_screen.dart';
 import 'acceleration_screen.dart';
 import 'record_screen.dart';
@@ -15,11 +16,7 @@ import 'settings_screen.dart';
 import 'summary_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({
-    super.key,
-    required this.store,
-    required this.settings,
-  });
+  const HomeScreen({super.key, required this.store, required this.settings});
 
   final RideStore store;
   final SettingsService settings;
@@ -80,10 +77,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _startRide() async {
     final sessionId = await Navigator.of(context).push<int>(
       MaterialPageRoute(
-        builder: (_) => RecordScreen(
-          store: widget.store,
-          settings: widget.settings,
-        ),
+        builder: (_) =>
+            RecordScreen(store: widget.store, settings: widget.settings),
       ),
     );
     if (!mounted) {
@@ -113,10 +108,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _openSettings() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => SettingsScreen(
-          store: widget.store,
-          settings: widget.settings,
-        ),
+        builder: (_) =>
+            SettingsScreen(store: widget.store, settings: widget.settings),
       ),
     );
     if (mounted) {
@@ -127,10 +120,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _startAcceleration() async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => AccelerationScreen(
-          store: widget.store,
-          settings: widget.settings,
-        ),
+        builder: (_) =>
+            AccelerationScreen(store: widget.store, settings: widget.settings),
       ),
     );
     if (mounted) {
@@ -157,9 +148,8 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     if (_sessions.any((session) => session.isDemo)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已经载入过演示行程，可在列表中查看。')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('已经载入过演示行程，可在列表中查看。')));
       return;
     }
     setState(() => _importingDemo = true);
@@ -175,9 +165,8 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('载入演示行程失败：$error')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('载入演示行程失败：$error')));
       }
     } finally {
       if (mounted) {
@@ -197,16 +186,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final totalDistance =
-        _sessions.fold<double>(0.0, (sum, s) => sum + s.distanceM);
+    final totalDistance = _sessions.fold<double>(
+      0.0,
+      (sum, s) => sum + s.distanceM,
+    );
     final maxLean = _sessions.fold<double>(
       0.0,
-      (value, s) =>
-          value > s.maxLeanLeftDeg && value > s.maxLeanRightDeg
-              ? value
-              : (s.maxLeanLeftDeg > s.maxLeanRightDeg
-                  ? s.maxLeanLeftDeg
-                  : s.maxLeanRightDeg),
+      (value, s) => value > s.maxLeanLeftDeg && value > s.maxLeanRightDeg
+          ? value
+          : (s.maxLeanLeftDeg > s.maxLeanRightDeg
+                ? s.maxLeanLeftDeg
+                : s.maxLeanRightDeg),
     );
 
     return Scaffold(
@@ -491,16 +481,10 @@ class _HeroCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF202B0E),
-            Color(0xFF151A10),
-            Color(0xFF121418),
-          ],
+          colors: [Color(0xFF202B0E), Color(0xFF151A10), Color(0xFF121418)],
           stops: [0, 0.48, 1],
         ),
-        border: Border.all(
-          color: AppColors.accent.withValues(alpha: 0.14),
-        ),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.14)),
       ),
       child: Stack(
         children: [
@@ -522,8 +506,10 @@ class _HeroCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(20),
@@ -572,10 +558,12 @@ class _HeroCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
-                FilledButton.icon(
-                  onPressed: onStart,
-                  icon: const Icon(Icons.play_arrow_rounded, size: 24),
-                  label: const Text('开始记录'),
+                PressableScale(
+                  child: FilledButton.icon(
+                    onPressed: onStart,
+                    icon: const Icon(Icons.play_arrow_rounded, size: 24),
+                    label: const Text('开始记录'),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -611,7 +599,9 @@ class _HeroCard extends StatelessWidget {
                             ? const SizedBox(
                                 width: 12,
                                 height: 12,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Text('查看演示'),
                       ),
@@ -683,22 +673,24 @@ class _AccelerationCard extends StatelessWidget {
                   ],
                 ),
               ),
-              FilledButton(
-                onPressed: onStart,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.cyan,
-                  foregroundColor: const Color(0xFF001A1F),
-                  minimumSize: const Size(0, 38),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              PressableScale(
+                child: FilledButton(
+                  onPressed: onStart,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.cyan,
+                    foregroundColor: const Color(0xFF001A1F),
+                    minimumSize: const Size(0, 38),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                  textStyle: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  child: const Text('开始'),
                 ),
-                child: const Text('开始'),
               ),
             ],
           ),
@@ -717,14 +709,13 @@ class _AccelerationCard extends StatelessWidget {
                   run == null
                       ? '还没有成绩，测一次试试'
                       : '最佳 0–${run.targetSpeedKmh.round()}：'
-                          '${run.resultSeconds.toStringAsFixed(2)} 秒 · '
-                          '${formatDateWithWeekday(run.startedAt)}',
+                            '${run.resultSeconds.toStringAsFixed(2)} 秒 · '
+                            '${formatDateWithWeekday(run.startedAt)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 11.5,
-                    fontWeight:
-                        run == null ? FontWeight.w500 : FontWeight.w700,
+                    fontWeight: run == null ? FontWeight.w500 : FontWeight.w700,
                     color: run == null
                         ? AppColors.textTertiary
                         : AppColors.textSecondary,
@@ -776,7 +767,7 @@ class _SessionCard extends StatelessWidget {
         : session.maxLeanRightDeg;
     final unit = settings.speedUnit;
     final distanceUnit = settings.distanceUnit;
-    return Material(
+    final card = Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
@@ -906,8 +897,9 @@ class _SessionCard extends StatelessWidget {
                       fontSize: 26,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -1,
-                      color:
-                          lean > 0 ? AppColors.accent : AppColors.textTertiary,
+                      color: lean > 0
+                          ? AppColors.accent
+                          : AppColors.textTertiary,
                       fontFeatures: tabularFigures,
                     ),
                   ),
@@ -926,6 +918,11 @@ class _SessionCard extends StatelessWidget {
         ),
       ),
     );
+    // 与总结页地图共享元素过渡；减弱动效时直接返回卡片。
+    if (session.id == null || AppMotion.reduced(context)) {
+      return card;
+    }
+    return Hero(tag: 'session-hero-${session.id}', child: card);
   }
 }
 
@@ -969,17 +966,19 @@ class _EmptyState extends StatelessWidget {
       decoration: cardDecoration(),
       child: Column(
         children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: const BoxDecoration(
-              color: AppColors.surfaceHigh,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.terrain_rounded,
-              color: AppColors.accent,
-              size: 28,
+          BreathingFloat(
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: const BoxDecoration(
+                color: AppColors.surfaceHigh,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.terrain_rounded,
+                color: AppColors.accent,
+                size: 28,
+              ),
             ),
           ),
           const SizedBox(height: 14),
@@ -1012,10 +1011,7 @@ class _EmptyState extends StatelessWidget {
           const SizedBox(height: 10),
           const Text(
             '没有真机？先看一条模拟山路行程。',
-            style: TextStyle(
-              fontSize: 10,
-              color: AppColors.textTertiary,
-            ),
+            style: TextStyle(fontSize: 10, color: AppColors.textTertiary),
           ),
         ],
       ),

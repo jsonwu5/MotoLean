@@ -6,11 +6,7 @@ import '../services/settings_service.dart';
 import '../theme.dart';
 
 class RideMapPoint {
-  const RideMapPoint({
-    required this.lat,
-    required this.lon,
-    this.leanDeg = 0,
-  });
+  const RideMapPoint({required this.lat, required this.lon, this.leanDeg = 0});
 
   final double lat;
   final double lon;
@@ -26,6 +22,7 @@ class RideMap extends StatefulWidget {
     this.live = false,
     this.current,
     this.mapStyle = MapStyle.satellite,
+    this.animateIn = false,
   });
 
   final List<RideMapPoint> points;
@@ -35,23 +32,53 @@ class RideMap extends StatefulWidget {
   final LatLng? current;
   final MapStyle mapStyle;
 
+  /// 非实时模式下，轨迹按时间轴从头绘制一遍（约 1 秒）。
+  final bool animateIn;
+
   @override
   State<RideMap> createState() => _RideMapState();
 }
 
-class _RideMapState extends State<RideMap> {
+class _RideMapState extends State<RideMap> with SingleTickerProviderStateMixin {
   final MapController _mapController = MapController();
   bool _mapReady = false;
+
+  late final AnimationController _drawController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1000),
+  )..addListener(() => setState(() {}));
+  late final Animation<double> _drawProgress = CurvedAnimation(
+    parent: _drawController,
+    curve: AppMotion.curve,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.animateIn && widget.points.length > 1) {
+      _drawController.forward();
+    } else {
+      _drawController.value = 1;
+    }
+  }
 
   @override
   void didUpdateWidget(covariant RideMap oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.animateIn &&
+        oldWidget.points.length < 2 &&
+        widget.points.length > 1) {
+      _drawController
+        ..reset()
+        ..forward();
+    }
     if (!widget.live) {
       return;
     }
     final oldLast = oldWidget.points.isEmpty ? null : oldWidget.points.last;
     final newLast = widget.points.isEmpty ? null : widget.points.last;
-    final changed = oldLast == null ||
+    final changed =
+        oldLast == null ||
         newLast == null ||
         oldLast.lat != newLast.lat ||
         oldLast.lon != newLast.lon;
@@ -60,11 +87,18 @@ class _RideMapState extends State<RideMap> {
     }
   }
 
+  @override
+  void dispose() {
+    _drawController.dispose();
+    super.dispose();
+  }
+
   void _followCurrent() {
     if (!mounted || !_mapReady) {
       return;
     }
-    final target = widget.current ??
+    final target =
+        widget.current ??
         (widget.points.isEmpty
             ? null
             : LatLng(widget.points.last.lat, widget.points.last.lon));
@@ -89,7 +123,11 @@ class _RideMapState extends State<RideMap> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.route_outlined, color: AppColors.textTertiary, size: 28),
+              Icon(
+                Icons.route_outlined,
+                color: AppColors.textTertiary,
+                size: 28,
+              ),
               SizedBox(height: 8),
               Text(
                 '等待 GPS 轨迹…',
@@ -101,17 +139,31 @@ class _RideMapState extends State<RideMap> {
       );
     }
 
-    final latLngs = [for (final p in points) LatLng(p.lat, p.lon)];
-    final current = widget.current ??
+    // 取景始终基于全量轨迹；绘制层按动画进度截断。
+    final fullLatLngs = [for (final p in points) LatLng(p.lat, p.lon)];
+    var visiblePoints = points;
+    if (widget.animateIn &&
+        !widget.live &&
+        !AppMotion.reduced(context) &&
+        points.length > 1) {
+      final count = (1 + _drawProgress.value * (points.length - 1))
+          .ceil()
+          .clamp(1, points.length);
+      visiblePoints = points.sublist(0, count);
+    }
+    final latLngs = [for (final p in visiblePoints) LatLng(p.lat, p.lon)];
+    final drawComplete = visiblePoints.length == points.length;
+    final current =
+        widget.current ??
         (widget.live ? LatLng(points.last.lat, points.last.lon) : null);
-    final showFit = !widget.live && latLngs.length > 1;
+    final showFit = !widget.live && fullLatLngs.length > 1;
 
     final options = MapOptions(
-      initialCenter: current ?? latLngs.last,
+      initialCenter: current ?? fullLatLngs.last,
       initialZoom: widget.live ? 16 : 13,
       initialCameraFit: showFit
           ? CameraFit.bounds(
-              bounds: LatLngBounds.fromPoints(latLngs),
+              bounds: LatLngBounds.fromPoints(fullLatLngs),
               padding: const EdgeInsets.all(30),
             )
           : null,
@@ -146,26 +198,24 @@ class _RideMapState extends State<RideMap> {
                 userAgentPackageName: 'com.jsonwoo.motolean',
               ),
               if (widget.colored)
-                PolylineLayer(
-                  polylines: _coloredPolylines(latLngs),
-                )
+                PolylineLayer(polylines: _coloredPolylines(visiblePoints))
               else
                 PolylineLayer(
                   polylines: [
-                    Polyline(
-                      points: latLngs,
-                      strokeWidth: 5,
-                      color: AppColors.accent,
-                      strokeCap: StrokeCap.round,
-                    ),
+                    if (latLngs.length > 1)
+                      Polyline(
+                        points: latLngs,
+                        strokeWidth: 5,
+                        color: AppColors.accent,
+                        strokeCap: StrokeCap.round,
+                      ),
                   ],
                 ),
               MarkerLayer(
                 markers: [
-                  if (!widget.live)
-                    _startMarker(latLngs.first),
-                  if (!widget.live && latLngs.length > 1)
-                    _endMarker(latLngs.last),
+                  if (!widget.live) _startMarker(fullLatLngs.first),
+                  if (!widget.live && fullLatLngs.length > 1 && drawComplete)
+                    _endMarker(fullLatLngs.last),
                   if (widget.live)
                     Marker(
                       point: current!,
@@ -216,60 +266,61 @@ class _RideMapState extends State<RideMap> {
   }
 
   Marker _startMarker(LatLng point) => Marker(
-        point: point,
-        width: 26,
-        height: 26,
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.accent, width: 2.5),
-          ),
-          child: const Center(
-            child: Text(
-              '起',
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                color: AppColors.accent,
-              ),
-            ),
+    point: point,
+    width: 26,
+    height: 26,
+    child: Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.accent, width: 2.5),
+      ),
+      child: const Center(
+        child: Text(
+          '起',
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            color: AppColors.accent,
           ),
         ),
-      );
+      ),
+    ),
+  );
 
   Marker _endMarker(LatLng point) => Marker(
-        point: point,
-        width: 26,
-        height: 26,
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            shape: BoxShape.circle,
-            border: Border.all(color: AppColors.danger, width: 2.5),
-          ),
-          child: const Center(
-            child: Text(
-              '终',
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                color: AppColors.danger,
-              ),
-            ),
+    point: point,
+    width: 26,
+    height: 26,
+    child: Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.danger, width: 2.5),
+      ),
+      child: const Center(
+        child: Text(
+          '终',
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            color: AppColors.danger,
           ),
         ),
-      );
+      ),
+    ),
+  );
 
-  List<Polyline> _coloredPolylines(List<LatLng> latLngs) {
-    if (latLngs.length < 2) {
+  List<Polyline> _coloredPolylines(List<RideMapPoint> visible) {
+    if (visible.length < 2) {
       return [];
     }
+    final latLngs = [for (final p in visible) LatLng(p.lat, p.lon)];
     final result = <Polyline>[];
-    var color = leanColor(widget.points[0].leanDeg);
+    var color = leanColor(visible[0].leanDeg);
     var segment = <LatLng>[latLngs[0]];
     for (var i = 1; i < latLngs.length; i++) {
-      final nextColor = leanColor(widget.points[i].leanDeg);
+      final nextColor = leanColor(visible[i].leanDeg);
       segment.add(latLngs[i]);
       if (nextColor != color) {
         if (segment.length > 1) {

@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../services/location_service.dart';
@@ -12,15 +14,12 @@ import '../theme.dart';
 import '../utils/format.dart';
 import '../utils/units.dart';
 import '../widgets/lean_gauge.dart';
+import '../widgets/motion.dart';
 import '../widgets/ride_map.dart';
 import '../widgets/stat_tile.dart';
 
 class RecordScreen extends StatefulWidget {
-  const RecordScreen({
-    super.key,
-    required this.store,
-    required this.settings,
-  });
+  const RecordScreen({super.key, required this.store, required this.settings});
 
   final RideStore store;
   final SettingsService settings;
@@ -34,6 +33,9 @@ class _RecordScreenState extends State<RecordScreen> {
   bool _screenAwake = false;
   bool _handlingBack = false;
   bool _stopping = false;
+  RecorderState? _prevState;
+  double _lastMaxLean = 0;
+  DateTime _lastLeanHaptic = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void initState() {
@@ -44,6 +46,7 @@ class _RecordScreenState extends State<RecordScreen> {
       sensorService: SensorService(),
       calibrationSeconds: widget.settings.calibrationSeconds,
     );
+    _recorder.addListener(_onRecorderChanged);
     if (widget.settings.defaultScreenAwake) {
       _screenAwake = true;
       unawaited(WakelockPlus.enable().catchError((_) {}));
@@ -52,11 +55,42 @@ class _RecordScreenState extends State<RecordScreen> {
 
   @override
   void dispose() {
+    _recorder.removeListener(_onRecorderChanged);
     _recorder.dispose();
     if (_screenAwake) {
       unawaited(WakelockPlus.disable());
     }
     super.dispose();
+  }
+
+  /// 状态与极值变化的触觉反馈：校准完成、刷新本趟最大倾角。
+  void _onRecorderChanged() {
+    if (!mounted) {
+      return;
+    }
+    final prev = _prevState;
+    final state = _recorder.state;
+    if (prev != state) {
+      if (prev == RecorderState.calibrating &&
+          state == RecorderState.recording) {
+        HapticFeedback.mediumImpact();
+      }
+      _prevState = state;
+    }
+    if (state == RecorderState.recording) {
+      final maxLean = math.max(
+        _recorder.maxLeanLeftDeg,
+        _recorder.maxLeanRightDeg,
+      );
+      if (maxLean > _lastMaxLean + 0.5) {
+        _lastMaxLean = maxLean;
+        if (DateTime.now().difference(_lastLeanHaptic) >
+            const Duration(milliseconds: 2500)) {
+          _lastLeanHaptic = DateTime.now();
+          HapticFeedback.lightImpact();
+        }
+      }
+    }
   }
 
   Future<void> _toggleScreenAwake() async {
@@ -81,8 +115,7 @@ class _RecordScreenState extends State<RecordScreen> {
     _handlingBack = true;
     try {
       final state = _recorder.state;
-      if (state == RecorderState.recording ||
-          state == RecorderState.paused) {
+      if (state == RecorderState.recording || state == RecorderState.paused) {
         final shouldStop = widget.settings.confirmBeforeStop
             ? await _askStop()
             : true;
@@ -147,6 +180,7 @@ class _RecordScreenState extends State<RecordScreen> {
         _showSnack(_recorder.errorMessage ?? '保存失败，请重试');
         return;
       }
+      HapticFeedback.mediumImpact();
       Navigator.of(context).pop(sessionId);
     } finally {
       _stopping = false;
@@ -176,22 +210,57 @@ class _RecordScreenState extends State<RecordScreen> {
           child: AnimatedBuilder(
             animation: _recorder,
             builder: (context, _) {
-              switch (_recorder.state) {
-                case RecorderState.idle:
-                  return _buildIntro();
-                case RecorderState.preparing:
-                  return _buildPreparing();
-                case RecorderState.calibrating:
-                  return _buildCalibrating();
-                case RecorderState.failed:
-                  return _buildFailure();
-                case RecorderState.recording:
-                case RecorderState.paused:
-                  return _buildDashboard();
-                case RecorderState.saving:
-                case RecorderState.finished:
-                  return _buildSaving();
-              }
+              final stateWidget = switch (_recorder.state) {
+                RecorderState.idle => _buildIntro(),
+                RecorderState.preparing => _buildPreparing(),
+                RecorderState.calibrating => _buildCalibrating(),
+                RecorderState.failed => _buildFailure(),
+                RecorderState.recording ||
+                RecorderState.paused => _buildDashboard(),
+                RecorderState.saving ||
+                RecorderState.finished => _buildSaving(),
+              };
+              // 记录中/暂停共用同一棵子树，切换暂停时不重播入场动画。
+              final switchKey = switch (_recorder.state) {
+                RecorderState.recording || RecorderState.paused => 'dash',
+                RecorderState.saving || RecorderState.finished => 'saving',
+                RecorderState.idle => 'idle',
+                RecorderState.preparing => 'preparing',
+                RecorderState.calibrating => 'calibrating',
+                RecorderState.failed => 'failed',
+              };
+              final reduced = AppMotion.reduced(context);
+              return AnimatedSwitcher(
+                duration: reduced ? AppMotion.fast : AppMotion.med,
+                switchInCurve: AppMotion.curve,
+                switchOutCurve: AppMotion.curveExit,
+                // 子树内含 Expanded，Stack 需要给满约束。
+                layoutBuilder: (currentChild, previousChildren) => Stack(
+                  fit: StackFit.expand,
+                  alignment: Alignment.topCenter,
+                  children: [...previousChildren, ?currentChild],
+                ),
+                transitionBuilder: (child, animation) {
+                  final faded = FadeTransition(
+                    opacity: animation,
+                    child: child,
+                  );
+                  if (reduced) {
+                    return faded;
+                  }
+                  return ScaleTransition(
+                    scale: Tween<double>(
+                      begin: 0.985,
+                      end: 1,
+                    ).animate(animation),
+                    child: faded,
+                  );
+                },
+                child: KeyedSubtree(
+                  key: ValueKey(switchKey),
+                  child: stateWidget,
+                ),
+              );
             },
           ),
         ),
@@ -255,7 +324,8 @@ class _RecordScreenState extends State<RecordScreen> {
                 _StepCard(
                   number: '02',
                   title: '扶正车身',
-                  body: '开始后保持车身与手机静止 '
+                  body:
+                      '开始后保持车身与手机静止 '
                       '${_recorder.calibrationSeconds} 秒，完成零位校准。'
                       '支架角度变化后请重新开始一次记录。',
                   icon: Icons.straighten_rounded,
@@ -300,10 +370,12 @@ class _RecordScreenState extends State<RecordScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: _recorder.start,
-                  icon: const Icon(Icons.sensors_rounded, size: 22),
-                  label: const Text('开始校准并记录'),
+                PressableScale(
+                  child: FilledButton.icon(
+                    onPressed: _recorder.start,
+                    icon: const Icon(Icons.sensors_rounded, size: 22),
+                    label: const Text('开始校准并记录'),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Center(
@@ -503,10 +575,7 @@ class _RecordScreenState extends State<RecordScreen> {
                 const SizedBox(height: 18),
                 const Text(
                   '记录没有启动',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 10),
                 Text(
@@ -541,10 +610,7 @@ class _RecordScreenState extends State<RecordScreen> {
                   label: const Text('打开系统设置'),
                 ),
                 const SizedBox(height: 6),
-                TextButton(
-                  onPressed: _handleBack,
-                  child: const Text('返回首页'),
-                ),
+                TextButton(onPressed: _handleBack, child: const Text('返回首页')),
               ],
             ),
           ),
@@ -560,11 +626,7 @@ class _RecordScreenState extends State<RecordScreen> {
     final distanceUnit = widget.settings.distanceUnit;
     final track = [
       for (final point in _recorder.track)
-        RideMapPoint(
-          lat: point.lat,
-          lon: point.lon,
-          leanDeg: point.leanDeg,
-        ),
+        RideMapPoint(lat: point.lat, lon: point.lon, leanDeg: point.leanDeg),
     ];
     final gpsLabel = !_recorder.gpsFresh
         ? '等待 GPS'
@@ -572,10 +634,10 @@ class _RecordScreenState extends State<RecordScreen> {
     final gpsColor = !_recorder.gpsFresh
         ? AppColors.textTertiary
         : (_recorder.gpsAccuracyM ?? 99) <= 25
-            ? AppColors.accent
-            : (_recorder.gpsAccuracyM ?? 99) <= 45
-                ? AppColors.amber
-                : AppColors.danger;
+        ? AppColors.accent
+        : (_recorder.gpsAccuracyM ?? 99) <= 45
+        ? AppColors.amber
+        : AppColors.danger;
 
     return Column(
       children: [
@@ -605,8 +667,9 @@ class _RecordScreenState extends State<RecordScreen> {
                 onPressed: _toggleScreenAwake,
                 tooltip: _screenAwake ? '关闭屏幕常亮' : '开启屏幕常亮',
                 style: IconButton.styleFrom(
-                  backgroundColor:
-                      _screenAwake ? AppColors.accentDark : AppColors.surface,
+                  backgroundColor: _screenAwake
+                      ? AppColors.accentDark
+                      : AppColors.surface,
                   side: BorderSide(
                     color: _screenAwake
                         ? AppColors.accent.withValues(alpha: 0.35)
@@ -649,76 +712,91 @@ class _RecordScreenState extends State<RecordScreen> {
                     color: AppColors.cyan,
                     text: '已暂停，速度、倾角与轨迹不会写入本次行程。',
                   ),
-                AnimatedOpacity(
-                  opacity: paused ? 0.42 : 1,
-                  duration: const Duration(milliseconds: 220),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 10),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            formatSpeedValue(_recorder.speedKmh / 3.6, unit),
-                            style: const TextStyle(
-                              fontSize: 82,
-                              height: 0.86,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -4,
-                              fontFeatures: tabularFigures,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10, left: 6),
-                            child: Text(
-                              unit.label,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textSecondary.withValues(
-                                  alpha: 0.9,
+                AnimatedSlide(
+                  offset: paused ? const Offset(0, -0.015) : Offset.zero,
+                  duration: AppMotion.fast,
+                  curve: AppMotion.curve,
+                  child: AnimatedOpacity(
+                    opacity: paused ? 0.42 : 1,
+                    duration: const Duration(milliseconds: 220),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 10),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            TweenAnimationBuilder<double>(
+                              tween: Tween(end: _recorder.speedKmh),
+                              duration: AppMotion.reduced(context)
+                                  ? Duration.zero
+                                  : const Duration(milliseconds: 350),
+                              curve: AppMotion.curve,
+                              builder: (context, speedKmh, _) => Text(
+                                formatSpeedValue(speedKmh / 3.6, unit),
+                                style: const TextStyle(
+                                  fontSize: 82,
+                                  height: 0.86,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -4,
+                                  fontFeatures: tabularFigures,
                                 ),
                               ),
                             ),
-                          ),
-                          const Spacer(),
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                const Text(
-                                  '本次最高',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    letterSpacing: 0.8,
-                                    color: AppColors.textTertiary,
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: 10,
+                                left: 6,
+                              ),
+                              child: Text(
+                                unit.label,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary.withValues(
+                                    alpha: 0.9,
                                   ),
                                 ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  formatSpeedWithUnit(
-                                    _recorder.maxSpeedKmh / 3.6,
-                                    unit,
-                                  ),
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textSecondary,
-                                    fontFeatures: tabularFigures,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                      LeanGauge(
-                        leanDeg: _recorder.leanDeg,
-                        maxLeftDeg: _recorder.maxLeanLeftDeg,
-                        maxRightDeg: _recorder.maxLeanRightDeg,
-                      ),
-                    ],
+                            const Spacer(),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  const Text(
+                                    '本次最高',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      letterSpacing: 0.8,
+                                      color: AppColors.textTertiary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    formatSpeedWithUnit(
+                                      _recorder.maxSpeedKmh / 3.6,
+                                      unit,
+                                    ),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondary,
+                                      fontFeatures: tabularFigures,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        LeanGauge(
+                          leanDeg: _recorder.leanDeg,
+                          maxLeftDeg: _recorder.maxLeanLeftDeg,
+                          maxRightDeg: _recorder.maxLeanRightDeg,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 Row(
@@ -745,8 +823,10 @@ class _RecordScreenState extends State<RecordScreen> {
                     Expanded(
                       child: StatTile(
                         label: '均速',
-                        value:
-                            formatSpeedValue(_recorder.avgSpeedKmh / 3.6, unit),
+                        value: formatSpeedValue(
+                          _recorder.avgSpeedKmh / 3.6,
+                          unit,
+                        ),
                         unit: unit.label,
                         height: 80,
                         accent: true,
@@ -766,10 +846,7 @@ class _RecordScreenState extends State<RecordScreen> {
                       ),
                     ),
                     const Spacer(),
-                    _StatusChip(
-                      label: gpsLabel,
-                      color: gpsColor,
-                    ),
+                    _StatusChip(label: gpsLabel, color: gpsColor),
                     const SizedBox(width: 6),
                     _StatusChip(
                       label: _recorder.sensorFresh ? 'IMU 正常' : 'IMU 无数据',
@@ -805,54 +882,56 @@ class _RecordScreenState extends State<RecordScreen> {
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
           decoration: BoxDecoration(
             color: AppColors.background,
-            border: const Border(
-              top: BorderSide(color: AppColors.divider),
-            ),
+            border: const Border(top: BorderSide(color: AppColors.divider)),
           ),
           child: Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    if (paused) {
-                      _recorder.resume();
-                    } else if (recording) {
-                      _recorder.pause();
-                    }
-                  },
-                  icon: Icon(
-                    paused
-                        ? Icons.play_arrow_rounded
-                        : Icons.pause_rounded,
-                    size: 20,
-                  ),
-                  label: Text(paused ? '继续记录' : '暂停'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(54),
-                    foregroundColor:
-                        paused ? AppColors.accent : AppColors.textPrimary,
-                    side: BorderSide(
-                      color: paused
-                          ? AppColors.accent.withValues(alpha: 0.4)
-                          : AppColors.divider,
+                child: PressableScale(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      if (paused) {
+                        _recorder.resume();
+                      } else if (recording) {
+                        _recorder.pause();
+                      }
+                    },
+                    icon: Icon(
+                      paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                      size: 20,
+                    ),
+                    label: Text(paused ? '继续记录' : '暂停'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(54),
+                      foregroundColor: paused
+                          ? AppColors.accent
+                          : AppColors.textPrimary,
+                      side: BorderSide(
+                        color: paused
+                            ? AppColors.accent.withValues(alpha: 0.4)
+                            : AppColors.divider,
+                      ),
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: FilledButton.icon(
-                  onPressed: _askStopAndStop,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.danger,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(54),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                child: PressableScale(
+                  child: FilledButton.icon(
+                    onPressed: _askStopAndStop,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.danger,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(54),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
+                    icon: const Icon(Icons.stop_rounded, size: 22),
+                    label: const Text('结束'),
                   ),
-                  icon: const Icon(Icons.stop_rounded, size: 22),
-                  label: const Text('结束'),
                 ),
               ),
             ],
@@ -1071,10 +1150,7 @@ class _PulsingDotState extends State<_PulsingDot>
       child: Container(
         width: 7,
         height: 7,
-        decoration: BoxDecoration(
-          color: widget.color,
-          shape: BoxShape.circle,
-        ),
+        decoration: BoxDecoration(color: widget.color, shape: BoxShape.circle),
       ),
     );
   }
