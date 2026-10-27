@@ -226,7 +226,7 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
               ),
             ),
             if (run.isDemo)
-              _Tag(label: '演示', color: AppColors.accent)
+              _Tag(label: '演示', color: AppColors.accentInk)
             else if (!run.valid)
               _Tag(label: '数据不足', color: AppColors.amber),
           ],
@@ -239,7 +239,7 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF202B0E), Color(0xFF121418)],
+              colors: [Color(0xFFDDF3F6), Color(0xFFF4F9FA)],
             ),
           ),
           child: Column(
@@ -481,7 +481,7 @@ class _StatCard extends StatelessWidget {
               fontSize: 15,
               fontWeight: FontWeight.w800,
               fontFeatures: tabularFigures,
-              color: accent ? AppColors.accent : AppColors.textPrimary,
+              color: accent ? AppColors.accentInk : AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 3),

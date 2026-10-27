@@ -1,21 +1,44 @@
 import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 
+/// 配色取自春风 450SR-S「星耀白」实车：
+///
+/// - 车漆白：`#F2F5F6` 页面底、纯白卡片
+/// - 品牌青蓝（SR-S 标识）：`#00EEFC` 原色过亮，白底上拆成两种用途
+///   - [accent] 用于填充块与图形（上面压深色字）
+///   - [accentInk] 用于白底上的文字、图标与细弧线（对比度 5.9:1）
+/// - 轮毂蓝：`#0F7CB8`，作为左倾 / 次要强调色
+/// - 碳纤黑：`#0F171C`，正文色
 abstract final class AppColors {
-  static const background = Color(0xFF0A0B0D);
-  static const surface = Color(0xFF15171C);
-  static const surfaceHigh = Color(0xFF1D2027);
-  static const surfaceHighest = Color(0xFF262A33);
-  static const accent = Color(0xFFC8FF3D);
-  static const accentDark = Color(0xFF2A3510);
-  static const cyan = Color(0xFF5BE7FF);
-  static const amber = Color(0xFFFFB020);
-  static const orange = Color(0xFFFF7A2F);
-  static const danger = Color(0xFFFF4D4F);
-  static const textPrimary = Color(0xFFF4F6F8);
-  static const textSecondary = Color(0xFF8E96A3);
-  static const textTertiary = Color(0xFF5C636E);
-  static const divider = Color(0xFF242830);
+  // 车漆白：页面底色与卡片
+  static const background = Color(0xFFF2F5F6);
+  static const surface = Color(0xFFFFFFFF);
+  static const surfaceHigh = Color(0xFFEDF2F4);
+  static const surfaceHighest = Color(0xFFDEE6EA);
+
+  // 品牌青蓝
+  static const accent = Color(0xFF00A5B8);
+  static const accentInk = Color(0xFF006E7F);
+  static const accentSoft = Color(0xFFD9F5F8);
+
+  // 轮毂蓝
+  static const blue = Color(0xFF0F7CB8);
+  static const blueSoft = Color(0xFFDCEBF7);
+
+  static const amber = Color(0xFF9A5A00);
+  static const orange = Color(0xFFD9561F);
+  static const danger = Color(0xFFD6342C);
+
+  // 压在高亮填充上的深色字
+  static const onAccent = Color(0xFF05252B);
+
+  static const textPrimary = Color(0xFF0F171C);
+  static const textSecondary = Color(0xFF55636D);
+  static const textTertiary = Color(0xFF68757F);
+  static const divider = Color(0xFFE1E8EB);
+
+  /// 卡片顶部的柔和青雾，呼应车漆在自然光下的冷调高光。
+  static const cyanWash = Color(0xFFEAF7F9);
 }
 
 const List<FontFeature> tabularFigures = [FontFeature.tabularFigures()];
@@ -44,13 +67,13 @@ abstract final class AppMotion {
 
 ThemeData buildAppTheme() {
   final base = ThemeData(
-    brightness: Brightness.dark,
+    brightness: Brightness.light,
     useMaterial3: true,
-    colorScheme: const ColorScheme.dark(
+    colorScheme: const ColorScheme.light(
       primary: AppColors.accent,
-      onPrimary: Color(0xFF111400),
-      secondary: AppColors.cyan,
-      onSecondary: Color(0xFF001A1F),
+      onPrimary: AppColors.onAccent,
+      secondary: AppColors.blue,
+      onSecondary: Colors.white,
       surface: AppColors.surface,
       onSurface: AppColors.textPrimary,
       error: AppColors.danger,
@@ -101,6 +124,7 @@ ThemeData buildAppTheme() {
             color: AppColors.textTertiary,
           ),
         ),
+    iconTheme: const IconThemeData(color: AppColors.textPrimary),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
@@ -116,7 +140,7 @@ ThemeData buildAppTheme() {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.accent,
-        foregroundColor: const Color(0xFF101400),
+        foregroundColor: AppColors.onAccent,
         minimumSize: const Size.fromHeight(56),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         textStyle: const TextStyle(
@@ -137,21 +161,18 @@ ThemeData buildAppTheme() {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: AppColors.accent,
+        foregroundColor: AppColors.accentInk,
         textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
     ),
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: AppColors.surfaceHighest,
-      contentTextStyle: const TextStyle(
-        color: AppColors.textPrimary,
-        fontSize: 14,
-      ),
+      backgroundColor: AppColors.textPrimary,
+      contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
     dialogTheme: DialogThemeData(
-      backgroundColor: AppColors.surfaceHigh,
+      backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       titleTextStyle: const TextStyle(
@@ -166,9 +187,9 @@ ThemeData buildAppTheme() {
       ),
     ),
     bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: AppColors.surfaceHigh,
+      backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
-      modalBackgroundColor: AppColors.surfaceHigh,
+      modalBackgroundColor: AppColors.surface,
     ),
     dividerTheme: const DividerThemeData(
       color: AppColors.divider,
@@ -177,6 +198,26 @@ ThemeData buildAppTheme() {
     ),
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: AppColors.accent,
+      linearTrackColor: AppColors.surfaceHighest,
+      circularTrackColor: AppColors.surfaceHighest,
+    ),
+    sliderTheme: const SliderThemeData(
+      activeTrackColor: AppColors.accent,
+      inactiveTrackColor: AppColors.surfaceHighest,
+      thumbColor: AppColors.accentInk,
+      overlayColor: Color(0x1A00A5B8),
+    ),
+    switchTheme: SwitchThemeData(
+      thumbColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? AppColors.surface
+            : AppColors.surfaceHighest,
+      ),
+      trackColor: WidgetStateProperty.resolveWith(
+        (states) => states.contains(WidgetState.selected)
+            ? AppColors.accent
+            : AppColors.surfaceHighest,
+      ),
     ),
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
@@ -199,7 +240,7 @@ BoxDecoration cardDecoration({
   color: gradient == null ? color : null,
   gradient: gradient,
   borderRadius: BorderRadius.circular(radius),
-  border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+  border: Border.all(color: AppColors.divider),
 );
 
 /// 克制的淡出 + 轻微上滑页面转场（iOS/macOS 保持原生侧滑返回手势）。

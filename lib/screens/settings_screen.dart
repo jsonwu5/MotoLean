@@ -323,7 +323,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.of(context).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: danger ? AppColors.danger : AppColors.accent,
-              foregroundColor: danger ? Colors.white : const Color(0xFF101400),
+              foregroundColor: danger ? Colors.white : AppColors.onAccent,
               minimumSize: const Size(0, 44),
               padding: const EdgeInsets.symmetric(horizontal: 18),
             ),

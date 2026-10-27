@@ -74,7 +74,7 @@ class SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? AppColors.danger : AppColors.accent;
+    final color = danger ? AppColors.danger : AppColors.accentInk;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
@@ -207,8 +207,8 @@ class SettingsSwitchTile extends StatelessWidget {
       trailing: Switch.adaptive(
         value: value,
         onChanged: onChanged,
-        activeTrackColor: AppColors.accent.withValues(alpha: 0.5),
-        activeThumbColor: AppColors.accent,
+        activeTrackColor: AppColors.accent,
+        activeThumbColor: AppColors.surface,
       ),
     );
   }
@@ -244,7 +244,7 @@ Future<T?> showSettingPicker<T>(
               contentPadding: const EdgeInsets.symmetric(horizontal: 24),
               title: Text(option.$2),
               trailing: option.$1 == current
-                  ? const Icon(Icons.check_rounded, color: AppColors.accent)
+                  ? const Icon(Icons.check_rounded, color: AppColors.accentInk)
                   : null,
               onTap: () => Navigator.of(context).pop(option.$1),
             ),

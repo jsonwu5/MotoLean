@@ -209,7 +209,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: AppColors.accentDark,
+                    color: AppColors.accentSoft,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: AppColors.accent.withValues(alpha: 0.25),
@@ -217,7 +217,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   ),
                   child: const Icon(
                     Icons.speed_rounded,
-                    color: AppColors.accent,
+                    color: AppColors.accentInk,
                     size: 32,
                   ),
                 ),
@@ -334,7 +334,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                                   : Icons.gps_not_fixed_rounded,
                               size: 44,
                               color: ready
-                                  ? AppColors.accent
+                                  ? AppColors.accentInk
                                   : AppColors.textSecondary,
                             ),
                             const SizedBox(height: 8),
@@ -346,7 +346,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
                                 color: ready
-                                    ? AppColors.accent
+                                    ? AppColors.accentInk
                                     : AppColors.textPrimary,
                                 fontFeatures: tabularFigures,
                               ),
@@ -410,7 +410,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   width: 76,
                   height: 76,
                   decoration: BoxDecoration(
-                    color: AppColors.accentDark,
+                    color: AppColors.accentSoft,
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: AppColors.accent.withValues(alpha: 0.35),
@@ -419,7 +419,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   ),
                   child: const Icon(
                     Icons.gps_fixed_rounded,
-                    color: AppColors.accent,
+                    color: AppColors.accentInk,
                     size: 36,
                   ),
                 ),
@@ -747,9 +747,9 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                       boxShadow: [
                         BoxShadow(
                           color: AppColors.accent.withValues(
-                            alpha: 0.32 * glow,
+                            alpha: 0.22 * glow,
                           ),
-                          blurRadius: 52 * glow,
+                          blurRadius: 44 * glow,
                           spreadRadius: 2 * glow,
                         ),
                       ],
@@ -763,7 +763,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [Color(0xFF202B0E), Color(0xFF121418)],
+                        colors: [Color(0xFFDDF3F6), Color(0xFFF4F9FA)],
                       ),
                     ),
                     child: Column(
@@ -1012,7 +1012,7 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? AppColors.amber : AppColors.accent;
+    final color = danger ? AppColors.amber : AppColors.accentInk;
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: cardDecoration(),

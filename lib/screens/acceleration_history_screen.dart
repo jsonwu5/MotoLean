@@ -334,7 +334,7 @@ class _RunCard extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                           letterSpacing: -1.5,
                           color: active
-                              ? AppColors.accent
+                              ? AppColors.accentInk
                               : AppColors.textTertiary,
                           fontFeatures: tabularFigures,
                         ),
@@ -381,7 +381,7 @@ class _RunCard extends StatelessWidget {
                         ),
                         if (run.isDemo) ...[
                           const SizedBox(width: 6),
-                          const _Badge(label: '演示', color: AppColors.accent),
+                          const _Badge(label: '演示', color: AppColors.accentInk),
                         ],
                         if (!run.valid) ...[
                           const SizedBox(width: 6),
@@ -480,7 +480,7 @@ class _SummaryCard extends StatelessWidget {
               fontSize: 16,
               fontWeight: FontWeight.w800,
               fontFeatures: tabularFigures,
-              color: accent ? AppColors.accent : AppColors.textPrimary,
+              color: accent ? AppColors.accentInk : AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 3),
@@ -519,7 +519,7 @@ class _EmptyState extends StatelessWidget {
               ),
               child: const Icon(
                 Icons.speed_rounded,
-                color: AppColors.accent,
+                color: AppColors.accentInk,
                 size: 30,
               ),
             ),

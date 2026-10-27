@@ -400,7 +400,7 @@ class _Header extends StatelessWidget {
           ),
           child: const Icon(
             Icons.two_wheeler_rounded,
-            color: Color(0xFF111400),
+            color: AppColors.onAccent,
             size: 24,
           ),
         ),
@@ -481,10 +481,10 @@ class _HeroCard extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF202B0E), Color(0xFF151A10), Color(0xFF121418)],
+          colors: [Color(0xFFDFF3F6), Color(0xFFF1F8FA), Color(0xFFFFFFFF)],
           stops: [0, 0.48, 1],
         ),
-        border: Border.all(color: AppColors.accent.withValues(alpha: 0.14)),
+        border: Border.all(color: AppColors.accent.withValues(alpha: 0.22)),
       ),
       child: Stack(
         children: [
@@ -496,7 +496,7 @@ class _HeroCard extends StatelessWidget {
               child: Icon(
                 Icons.route_rounded,
                 size: 190,
-                color: AppColors.accent.withValues(alpha: 0.055),
+                color: AppColors.accent.withValues(alpha: 0.10),
               ),
             ),
           ),
@@ -511,10 +511,10 @@ class _HeroCard extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: Colors.white.withValues(alpha: 0.75),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.06),
+                      color: AppColors.accent.withValues(alpha: 0.30),
                     ),
                   ),
                   child: const Row(
@@ -523,7 +523,7 @@ class _HeroCard extends StatelessWidget {
                       Icon(
                         Icons.sensors_rounded,
                         size: 12,
-                        color: AppColors.accent,
+                        color: AppColors.accentInk,
                       ),
                       SizedBox(width: 5),
                       Text(
@@ -641,12 +641,12 @@ class _AccelerationCard extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.cyan.withValues(alpha: 0.12),
+                  color: AppColors.blue.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.speed_rounded,
-                  color: AppColors.cyan,
+                  color: AppColors.blue,
                   size: 22,
                 ),
               ),
@@ -677,8 +677,8 @@ class _AccelerationCard extends StatelessWidget {
                 child: FilledButton(
                   onPressed: onStart,
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.cyan,
-                    foregroundColor: const Color(0xFF001A1F),
+                    backgroundColor: AppColors.blue,
+                    foregroundColor: Colors.white,
                     minimumSize: const Size(0, 38),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     shape: RoundedRectangleBorder(
@@ -701,7 +701,7 @@ class _AccelerationCard extends StatelessWidget {
               const Icon(
                 Icons.emoji_events_rounded,
                 size: 14,
-                color: AppColors.accent,
+                color: AppColors.accentInk,
               ),
               const SizedBox(width: 6),
               Expanded(
@@ -832,7 +832,7 @@ class _SessionCard extends StatelessWidget {
                               vertical: 1,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.accentDark,
+                              color: AppColors.accentSoft,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: const Text(
@@ -840,7 +840,7 @@ class _SessionCard extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 8,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.accent,
+                                color: AppColors.accentInk,
                               ),
                             ),
                           ),
@@ -898,7 +898,7 @@ class _SessionCard extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                       letterSpacing: -1,
                       color: lean > 0
-                          ? AppColors.accent
+                          ? AppColors.accentInk
                           : AppColors.textTertiary,
                       fontFeatures: tabularFigures,
                     ),
@@ -976,7 +976,7 @@ class _EmptyState extends StatelessWidget {
               ),
               child: const Icon(
                 Icons.terrain_rounded,
-                color: AppColors.accent,
+                color: AppColors.accentInk,
                 size: 28,
               ),
             ),
@@ -1127,7 +1127,7 @@ class _MeasurementInfoSheet extends StatelessWidget {
               color: AppColors.surfaceHighest,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 18, color: AppColors.accent),
+            child: Icon(icon, size: 18, color: AppColors.accentInk),
           ),
           const SizedBox(width: 12),
           Expanded(

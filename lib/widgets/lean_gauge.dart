@@ -76,7 +76,7 @@ class _LeanGaugeState extends State<LeanGauge>
     final leanDeg = _displayedLean;
     final leaningRight = leanDeg >= 1;
     final leaningLeft = leanDeg <= -1;
-    final targetColor = leaningLeft ? AppColors.cyan : AppColors.accent;
+    final targetColor = leaningLeft ? AppColors.blue : AppColors.accent;
     final reduced = AppMotion.reduced(context);
     final direction = leaningRight
         ? '右倾'
@@ -145,7 +145,7 @@ class _LeanGaugeState extends State<LeanGauge>
                 child: _LimitLabel(
                   label: 'L',
                   value: widget.maxLeftDeg,
-                  color: AppColors.cyan,
+                  color: AppColors.blue,
                 ),
               ),
               Positioned(
@@ -154,7 +154,7 @@ class _LeanGaugeState extends State<LeanGauge>
                 child: _LimitLabel(
                   label: 'R',
                   value: widget.maxRightDeg,
-                  color: AppColors.accent,
+                  color: AppColors.accentInk,
                 ),
               ),
             ],
@@ -261,8 +261,8 @@ class _GaugePainter extends CustomPainter {
     }
 
     // Max lean markers.
-    _drawMaxMarker(canvas, center, radius, -maxLeftDeg, AppColors.cyan);
-    _drawMaxMarker(canvas, center, radius, maxRightDeg, AppColors.accent);
+    _drawMaxMarker(canvas, center, radius, -maxLeftDeg, AppColors.blue);
+    _drawMaxMarker(canvas, center, radius, maxRightDeg, AppColors.accentInk);
 
     // Active arc from upright to current lean.
     final clamped = leanDeg.clamp(-_maxLean, _maxLean).toDouble();

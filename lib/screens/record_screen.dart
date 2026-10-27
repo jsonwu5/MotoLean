@@ -282,7 +282,7 @@ class _RecordScreenState extends State<RecordScreen> {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: AppColors.accentDark,
+                    color: AppColors.accentSoft,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: AppColors.accent.withValues(alpha: 0.25),
@@ -290,7 +290,7 @@ class _RecordScreenState extends State<RecordScreen> {
                   ),
                   child: const Icon(
                     Icons.terrain_rounded,
-                    color: AppColors.accent,
+                    color: AppColors.accentInk,
                     size: 32,
                   ),
                 ),
@@ -509,7 +509,7 @@ class _RecordScreenState extends State<RecordScreen> {
                           Icon(
                             Icons.screen_rotation_rounded,
                             size: 18,
-                            color: AppColors.accent,
+                            color: AppColors.accentInk,
                           ),
                           SizedBox(width: 10),
                           Text(
@@ -634,7 +634,7 @@ class _RecordScreenState extends State<RecordScreen> {
     final gpsColor = !_recorder.gpsFresh
         ? AppColors.textTertiary
         : (_recorder.gpsAccuracyM ?? 99) <= 25
-        ? AppColors.accent
+        ? AppColors.accentInk
         : (_recorder.gpsAccuracyM ?? 99) <= 45
         ? AppColors.amber
         : AppColors.danger;
@@ -668,7 +668,7 @@ class _RecordScreenState extends State<RecordScreen> {
                 tooltip: _screenAwake ? '关闭屏幕常亮' : '开启屏幕常亮',
                 style: IconButton.styleFrom(
                   backgroundColor: _screenAwake
-                      ? AppColors.accentDark
+                      ? AppColors.accentSoft
                       : AppColors.surface,
                   side: BorderSide(
                     color: _screenAwake
@@ -680,7 +680,7 @@ class _RecordScreenState extends State<RecordScreen> {
                   Icons.light_mode_rounded,
                   size: 20,
                   color: _screenAwake
-                      ? AppColors.accent
+                      ? AppColors.accentInk
                       : AppColors.textSecondary,
                 ),
               ),
@@ -709,7 +709,7 @@ class _RecordScreenState extends State<RecordScreen> {
                 if (paused)
                   _InlineBanner(
                     icon: Icons.pause_circle_outline_rounded,
-                    color: AppColors.cyan,
+                    color: AppColors.blue,
                     text: '已暂停，速度、倾角与轨迹不会写入本次行程。',
                   ),
                 AnimatedSlide(
@@ -851,7 +851,7 @@ class _RecordScreenState extends State<RecordScreen> {
                     _StatusChip(
                       label: _recorder.sensorFresh ? 'IMU 正常' : 'IMU 无数据',
                       color: _recorder.sensorFresh
-                          ? AppColors.accent
+                          ? AppColors.accentInk
                           : AppColors.danger,
                     ),
                   ],
@@ -905,7 +905,7 @@ class _RecordScreenState extends State<RecordScreen> {
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size.fromHeight(54),
                       foregroundColor: paused
-                          ? AppColors.accent
+                          ? AppColors.accentInk
                           : AppColors.textPrimary,
                       side: BorderSide(
                         color: paused
@@ -1034,7 +1034,7 @@ class _StepCard extends StatelessWidget {
               color: AppColors.surfaceHigh,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, size: 20, color: AppColors.accent),
+            child: Icon(icon, size: 20, color: AppColors.accentInk),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1049,7 +1049,7 @@ class _StepCard extends StatelessWidget {
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1,
-                        color: AppColors.accent,
+                        color: AppColors.accentInk,
                         fontFeatures: tabularFigures,
                       ),
                     ),

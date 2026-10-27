@@ -33,7 +33,7 @@ class StatTile extends StatelessWidget {
       fontWeight: FontWeight.w800,
       height: 1.1,
       letterSpacing: -0.8,
-      color: accent ? AppColors.accent : AppColors.textPrimary,
+      color: accent ? AppColors.accentInk : AppColors.textPrimary,
       fontFeatures: tabularFigures,
     );
     final animatable = countUp != null && countFormat != null;

@@ -255,7 +255,7 @@ class _RideMapState extends State<RideMap> with SingleTickerProviderStateMixin {
                     : '© Esri · Maxar · Earthstar Geographics',
                 style: const TextStyle(
                   fontSize: 8,
-                  color: AppColors.textSecondary,
+                  color: Color(0xFFDCE6EA),
                 ),
               ),
             ),
@@ -281,7 +281,7 @@ class _RideMapState extends State<RideMap> with SingleTickerProviderStateMixin {
           style: TextStyle(
             fontSize: 9,
             fontWeight: FontWeight.w700,
-            color: AppColors.accent,
+            color: AppColors.accentInk,
           ),
         ),
       ),
@@ -365,5 +365,5 @@ Color leanColor(double leanDeg) {
   if (lean >= 10) {
     return AppColors.accent;
   }
-  return const Color(0xFF56606D);
+  return AppColors.textTertiary;
 }

@@ -281,7 +281,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.accentDark,
+                              color: AppColors.accentSoft,
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: const Text(
@@ -289,7 +289,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                               style: TextStyle(
                                 fontSize: 9,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.accent,
+                                color: AppColors.accentInk,
                               ),
                             ),
                           ),
@@ -618,7 +618,7 @@ class RemoteMapCard extends StatelessWidget {
             spacing: 12,
             runSpacing: 6,
             children: [
-              _LegendItem(color: Color(0xFF56606D), label: '0–10°'),
+              _LegendItem(color: AppColors.textTertiary, label: '0–10°'),
               _LegendItem(color: AppColors.accent, label: '10–20°'),
               _LegendItem(color: AppColors.amber, label: '20–30°'),
               _LegendItem(color: AppColors.orange, label: '30–40°'),
@@ -751,7 +751,7 @@ class _LeanBands extends StatelessWidget {
                           widthFactor: factor.clamp(0.0, 1.0),
                           child: Container(
                             color: band.lowerDeg == 0
-                                ? const Color(0xFF56606D)
+                                ? AppColors.textTertiary
                                 : leanColor(
                                     (band.lowerDeg + band.upperDeg) / 2,
                                   ),
