@@ -4,26 +4,6 @@
 
 这是面向个人使用的离线原型：没有账号、没有云端。手机端数据保存在本机 SQLite，Web 预览使用内存存储。
 
-## 界面预览
-
-| 首页 | 零百加速 |
-| --- | --- |
-| ![首页](screenshots/home.png) | ![零百加速](screenshots/accel.png) |
-
-| 加速成绩 | 记录准备 |
-| --- | --- |
-| ![加速成绩](screenshots/accel-history.png) | ![记录准备](screenshots/record.png) |
-
-| 行程总结 | 倾角分布与速度曲线 |
-| --- | --- |
-| ![行程总结](screenshots/summary.png) | ![倾角分布与速度曲线](screenshots/summary-detail.png) |
-
-| 设置 | 设置（零百与地图） |
-| --- | --- |
-| ![设置](screenshots/settings.png) | ![设置（零百与地图）](screenshots/settings-2.png) |
-
-> 截图为浏览器预览生成（780×1688），路线与数据来自内置演示行程（合成数据）。
-
 ## 功能
 
 - 实时速度、左右倾角表盘、实时轨迹地图
@@ -182,7 +162,6 @@ lib/
   widgets/                      倾角表盘、地图、统计卡、设置行
   utils/                        距离、格式化、单位换算、分析
 assets/app_icon.png             应用图标源文件
-screenshots/                    界面截图
 web/                            Web 预览入口
 test/                           算法、存储、导出、设置、界面测试
 ```
