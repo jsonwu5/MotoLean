@@ -73,6 +73,7 @@ flutter:
 
   assets:
     - assets/map/
+    - assets/app_icon.png
 
   # 数字/英文展示字体：Rajdhani（OFL 许可，见 assets/fonts/OFL.txt）。
   fonts:

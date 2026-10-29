@@ -128,7 +128,7 @@ ThemeData buildAppTheme() {
     useMaterial3: true,
     colorScheme: const ColorScheme.light(
       primary: AppColors.accent,
-      onPrimary: AppColors.onAccent,
+      onPrimary: Colors.white,
       secondary: AppColors.blue,
       onSecondary: Colors.white,
       surface: AppColors.surface,
@@ -197,8 +197,7 @@ ThemeData buildAppTheme() {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.accent,
-        // 青蓝填充上压深色字（5.4:1），白字只有约 3:1 不达标。
-        foregroundColor: AppColors.onAccent,
+        foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(56),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         textStyle: const TextStyle(

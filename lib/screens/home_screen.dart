@@ -8,7 +8,6 @@ import '../services/settings_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../utils/units.dart';
-import '../widgets/brand_mark.dart';
 import '../widgets/motion.dart';
 import 'acceleration_history_screen.dart';
 import 'acceleration_screen.dart';
@@ -382,7 +381,30 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const BrandMark(),
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.accent.withValues(alpha: 0.28),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.asset(
+              'assets/app_icon.png',
+              width: 42,
+              height: 42,
+              cacheWidth: 126,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
         const SizedBox(width: 12),
         const Expanded(
           child: Column(
@@ -646,7 +668,7 @@ class _AccelerationCard extends StatelessWidget {
                 child: FilledButton(
                   onPressed: onStart,
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.blue,
+                    backgroundColor: AppColors.accent,
                     foregroundColor: Colors.white,
                     minimumSize: const Size(0, 38),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
