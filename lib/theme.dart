@@ -41,6 +41,63 @@ abstract final class AppColors {
   static const cyanWash = Color(0xFFEAF7F9);
 }
 
+/// 记录中仪表盘的深色「夜间模式」色板。
+///
+/// 只在骑行进行中的界面使用（记录页仪表盘），碳黑底 + 青蓝读数，
+/// 夜间骑行不刺眼，也与全屏轨迹回放的黑色沉浸保持一致。
+abstract final class AppDash {
+  static const background = Color(0xFF0A0F12);
+  static const surface = Color(0xFF131B20);
+  static const surfaceHigh = Color(0xFF1D282F);
+  static const surfaceHighest = Color(0xFF2A3740);
+  static const divider = Color(0xFF26323A);
+
+  static const textPrimary = Color(0xFFEDF4F6);
+  static const textSecondary = Color(0xFFA3B4BD);
+  static const textTertiary = Color(0xFF71828C);
+
+  /// 深色底上的语义色：比浅色版亮一档，保证对比度。
+  static const accent = Color(0xFF2FD8E8);
+  static const blue = Color(0xFF4FA8E0);
+  static const amber = Color(0xFFE8A94B);
+  static const danger = Color(0xFFF06A5E);
+
+  /// 压在亮色 danger 按钮上的深色字。
+  static const onDanger = Color(0xFF2A0D08);
+}
+
+/// 数字与英文展示字体（Rajdhani，OFL 许可）：方正的仪表腔调。
+/// 中文字形会自动回退到系统字体，混排安全。
+const String kDisplayFont = 'Rajdhani';
+
+/// 大尺寸读数（时速、秒表、倾角、成绩）的统一样式。
+///
+/// 仪表惯例的轻微斜体由引擎合成；[slanted] 关闭时用于小字场景。
+TextStyle displayNumber({
+  required double fontSize,
+  Color color = AppColors.textPrimary,
+  FontWeight fontWeight = FontWeight.w700,
+  double letterSpacing = 0,
+  double height = 1,
+  bool slanted = true,
+}) => TextStyle(
+  fontFamily: kDisplayFont,
+  fontSize: fontSize,
+  height: height,
+  fontWeight: fontWeight,
+  letterSpacing: letterSpacing,
+  fontStyle: slanted ? FontStyle.italic : FontStyle.normal,
+  color: color,
+  fontFeatures: tabularFigures,
+);
+
+/// 加速域的卡片渐变：轮毂蓝的冷调高光，与骑行驶的青色区分。
+const LinearGradient accelCardGradient = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  colors: [Color(0xFFDCEBF7), Color(0xFFF3F8FB)],
+);
+
 const List<FontFeature> tabularFigures = [FontFeature.tabularFigures()];
 
 /// 全局动效规格：统一时长与曲线，并尊重系统「减弱动态效果」。
@@ -71,7 +128,7 @@ ThemeData buildAppTheme() {
     useMaterial3: true,
     colorScheme: const ColorScheme.light(
       primary: AppColors.accent,
-      onPrimary: Colors.white,
+      onPrimary: AppColors.onAccent,
       secondary: AppColors.blue,
       onSecondary: Colors.white,
       surface: AppColors.surface,
@@ -140,7 +197,8 @@ ThemeData buildAppTheme() {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.accent,
-        foregroundColor: Colors.white,
+        // 青蓝填充上压深色字（5.4:1），白字只有约 3:1 不达标。
+        foregroundColor: AppColors.onAccent,
         minimumSize: const Size.fromHeight(56),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         textStyle: const TextStyle(

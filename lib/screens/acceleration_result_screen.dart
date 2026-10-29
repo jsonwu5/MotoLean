@@ -226,7 +226,7 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
               ),
             ),
             if (run.isDemo)
-              _Tag(label: '演示', color: AppColors.accentInk)
+              _Tag(label: '演示', color: AppColors.blue)
             else if (!run.valid)
               _Tag(label: '数据不足', color: AppColors.amber),
           ],
@@ -235,13 +235,7 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
         Container(
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(24, 26, 24, 22),
-          decoration: cardDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFFDDF3F6), Color(0xFFF4F9FA)],
-            ),
-          ),
+          decoration: cardDecoration(gradient: accelCardGradient),
           child: Column(
             children: [
               Text(
@@ -267,15 +261,13 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
                   children: [
                     Text(
                       run.resultSeconds.toStringAsFixed(2),
-                      style: TextStyle(
-                        fontSize: 84,
+                      style: displayNumber(
+                        fontSize: 92,
                         height: 0.95,
-                        fontWeight: FontWeight.w800,
                         letterSpacing: -4,
                         color: run.valid
-                            ? AppColors.accent
+                            ? AppColors.blue
                             : AppColors.textTertiary,
-                        fontFeatures: tabularFigures,
                       ),
                     ),
                     const Padding(
@@ -470,13 +462,16 @@ class _StatCard extends StatelessWidget {
               fontSize: 15,
               fontWeight: FontWeight.w800,
               fontFeatures: tabularFigures,
-              color: accent ? AppColors.accentInk : AppColors.textPrimary,
+              color: accent ? AppColors.blue : AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 3),
           Text(
             label,
-            style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary),
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: AppColors.textTertiary,
+            ),
           ),
         ],
       ),

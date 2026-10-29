@@ -9,6 +9,7 @@ import '../theme.dart';
 import '../utils/format.dart';
 import '../utils/ride_analytics.dart';
 import '../utils/units.dart';
+import 'brand_mark.dart';
 import 'ride_map.dart' show leanColor;
 
 /// 海报按固定逻辑宽度排版，导出时统一放大 3 倍，得到约 1080px 宽的长图。
@@ -99,9 +100,11 @@ class _SharePosterDialogState extends State<_SharePosterDialog> {
     });
     try {
       final png = await ShareImage.capture(_boundaryKey);
-      final box = _shareButtonKey.currentContext?.findRenderObject() as RenderBox?;
-      final origin =
-          box == null ? null : box.localToGlobal(Offset.zero) & box.size;
+      final box =
+          _shareButtonKey.currentContext?.findRenderObject() as RenderBox?;
+      final origin = box == null
+          ? null
+          : box.localToGlobal(Offset.zero) & box.size;
       await ShareImage.share(
         png: png,
         fileName: widget.fileName,
@@ -161,8 +164,9 @@ class _SharePosterDialogState extends State<_SharePosterDialog> {
                     ),
                     const Spacer(),
                     IconButton(
-                      onPressed:
-                          _busy ? null : () => Navigator.of(context).pop(),
+                      onPressed: _busy
+                          ? null
+                          : () => Navigator.of(context).pop(),
                       icon: const Icon(Icons.close_rounded, size: 20),
                       tooltip: '关闭',
                     ),
@@ -175,9 +179,7 @@ class _SharePosterDialogState extends State<_SharePosterDialog> {
                     fit: BoxFit.contain,
                     child: RepaintBoundary(
                       key: _boundaryKey,
-                      child: MediaQuery.withNoTextScaling(
-                        child: widget.poster,
-                      ),
+                      child: MediaQuery.withNoTextScaling(child: widget.poster),
                     ),
                   ),
                 ),
@@ -278,19 +280,7 @@ class _PosterHeader extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: AppColors.accent,
-            borderRadius: BorderRadius.circular(11),
-          ),
-          child: const Icon(
-            Icons.two_wheeler_rounded,
-            size: 21,
-            color: Colors.white,
-          ),
-        ),
+        const BrandMark(size: 34, radius: 11),
         const SizedBox(width: 10),
         const Expanded(
           child: Column(
@@ -398,45 +388,50 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-/// 主数据卡：淡青渐变 + 大字号数值。
+/// 主数据卡：淡青渐变 + 大字号数值；[blue] 时切换为加速域的蓝色叙事。
 class _HeroCard extends StatelessWidget {
   const _HeroCard({
     required this.label,
     required this.value,
     required this.unit,
     required this.chips,
+    this.blue = false,
   });
 
   final String label;
   final String value;
   final String unit;
+  final bool blue;
 
   /// 底部一行小指标：(标签, 数值)
   final List<(String, String)> chips;
 
   @override
   Widget build(BuildContext context) {
+    final domainColor = blue ? AppColors.blue : AppColors.accent;
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFDFF3F6), Color(0xFFF7FBFC)],
-        ),
+        gradient: blue
+            ? accelCardGradient
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFDFF3F6), Color(0xFFF7FBFC)],
+              ),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.accent.withValues(alpha: 0.22)),
+        border: Border.all(color: domainColor.withValues(alpha: 0.22)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.6,
-              color: AppColors.accentInk,
+              color: blue ? AppColors.blue : AppColors.accentInk,
             ),
           ),
           const SizedBox(height: 6),
@@ -449,14 +444,7 @@ class _HeroCard extends StatelessWidget {
               children: [
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 46,
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -2,
-                    color: AppColors.textPrimary,
-                    fontFeatures: tabularFigures,
-                  ),
+                  style: displayNumber(fontSize: 50, letterSpacing: -2),
                 ),
                 const SizedBox(width: 6),
                 Text(
@@ -471,7 +459,7 @@ class _HeroCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Container(height: 1, color: AppColors.accent.withValues(alpha: 0.18)),
+          Container(height: 1, color: domainColor.withValues(alpha: 0.18)),
           const SizedBox(height: 10),
           Row(
             children: [
@@ -497,12 +485,7 @@ class _HeroCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         chips[i].$2,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                          fontFeatures: tabularFigures,
-                        ),
+                        style: displayNumber(fontSize: 14, slanted: false),
                       ),
                     ],
                   ),
@@ -554,13 +537,10 @@ class _LeanTile extends StatelessWidget {
             children: [
               Text(
                 degrees <= 0 ? '—' : degrees.round().toString(),
-                style: TextStyle(
-                  fontSize: 30,
-                  height: 1,
-                  fontWeight: FontWeight.w800,
+                style: displayNumber(
+                  fontSize: 33,
                   letterSpacing: -1,
                   color: degrees <= 0 ? AppColors.textTertiary : color,
-                  fontFeatures: tabularFigures,
                 ),
               ),
               const SizedBox(width: 2),
@@ -585,11 +565,13 @@ class _StatCell extends StatelessWidget {
     required this.label,
     required this.value,
     this.icon,
+    this.iconColor = AppColors.accentInk,
   });
 
   final String label;
   final String value;
   final IconData? icon;
+  final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -603,7 +585,7 @@ class _StatCell extends StatelessWidget {
       child: Row(
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 15, color: AppColors.accentInk),
+            Icon(icon, size: 15, color: iconColor),
             const SizedBox(width: 8),
           ],
           Expanded(
@@ -623,12 +605,7 @@ class _StatCell extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     value,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                      fontFeatures: tabularFigures,
-                    ),
+                    style: displayNumber(fontSize: 15, slanted: false),
                   ),
                 ),
               ],
@@ -820,8 +797,10 @@ class AccelerationSharePoster extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cells = <(String, String, IconData)>[
-      if (run.result60Ms != null) ('0–60 km/h', _seconds(run.result60Ms), Icons.bolt_rounded),
-      if (run.result130Ms != null) ('60–130 km/h', _seconds(run.result130Ms), Icons.speed_rounded),
+      if (run.result60Ms != null)
+        ('0–60 km/h', _seconds(run.result60Ms), Icons.bolt_rounded),
+      if (run.result130Ms != null)
+        ('60–130 km/h', _seconds(run.result130Ms), Icons.speed_rounded),
       (
         '起步距离',
         run.distanceM == null
@@ -863,6 +842,7 @@ class AccelerationSharePoster extends StatelessWidget {
                 : '0–${run.targetSpeedKmh.round()} km/h',
             value: (run.resultMs / 1000).toStringAsFixed(2),
             unit: 's',
+            blue: true,
             chips: [
               ('目标', '${run.targetSpeedKmh.round()} km/h'),
               ('口径', run.rollout ? '1 英尺' : '静止'),
@@ -878,6 +858,7 @@ class AccelerationSharePoster extends StatelessWidget {
                     label: cells[i].$1,
                     value: cells[i].$2,
                     icon: cells[i].$3,
+                    iconColor: AppColors.blue,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -887,6 +868,7 @@ class AccelerationSharePoster extends StatelessWidget {
                           label: cells[i + 1].$1,
                           value: cells[i + 1].$2,
                           icon: cells[i + 1].$3,
+                          iconColor: AppColors.blue,
                         )
                       : const SizedBox.shrink(),
                 ),

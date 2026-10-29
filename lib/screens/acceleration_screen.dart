@@ -209,15 +209,15 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   width: 64,
                   height: 64,
                   decoration: BoxDecoration(
-                    color: AppColors.accentSoft,
+                    color: AppColors.blueSoft,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: AppColors.accent.withValues(alpha: 0.25),
+                      color: AppColors.blue.withValues(alpha: 0.25),
                     ),
                   ),
                   child: const Icon(
                     Icons.speed_rounded,
-                    color: AppColors.accentInk,
+                    color: AppColors.blue,
                     size: 32,
                   ),
                 ),
@@ -293,7 +293,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                             backgroundColor: AppColors.surfaceHigh,
                             strokeCap: StrokeCap.round,
                             valueColor: AlwaysStoppedAnimation(
-                              ready ? AppColors.accent : AppColors.amber,
+                              ready ? AppColors.blue : AppColors.amber,
                             ),
                           ),
                         ),
@@ -306,7 +306,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                                   : Icons.gps_not_fixed_rounded,
                               size: 44,
                               color: ready
-                                  ? AppColors.accentInk
+                                  ? AppColors.blue
                                   : AppColors.textSecondary,
                             ),
                             const SizedBox(height: 8),
@@ -318,7 +318,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                                 fontSize: 20,
                                 fontWeight: FontWeight.w800,
                                 color: ready
-                                    ? AppColors.accentInk
+                                    ? AppColors.blue
                                     : AppColors.textPrimary,
                                 fontFeatures: tabularFigures,
                               ),
@@ -382,16 +382,16 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   width: 76,
                   height: 76,
                   decoration: BoxDecoration(
-                    color: AppColors.accentSoft,
+                    color: AppColors.blueSoft,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: AppColors.accent.withValues(alpha: 0.35),
+                      color: AppColors.blue.withValues(alpha: 0.35),
                       width: 2,
                     ),
                   ),
                   child: const Icon(
                     Icons.gps_fixed_rounded,
-                    color: AppColors.accentInk,
+                    color: AppColors.blue,
                     size: 36,
                   ),
                 ),
@@ -491,13 +491,10 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
             child: Text(
               '${_recorder.countdownRemaining}',
               key: ValueKey(_recorder.countdownRemaining),
-              style: const TextStyle(
-                fontSize: 140,
-                height: 1,
-                fontWeight: FontWeight.w800,
+              style: displayNumber(
+                fontSize: 148,
                 letterSpacing: -6,
-                color: AppColors.accent,
-                fontFeatures: tabularFigures,
+                color: AppColors.blue,
               ),
             ),
           ),
@@ -565,12 +562,10 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   _recorder.started
                       ? _recorder.elapsedSeconds.toStringAsFixed(2)
                       : '0.00',
-                  style: const TextStyle(
-                    fontSize: 92,
-                    height: 0.95,
-                    fontWeight: FontWeight.w800,
+                  style: displayNumber(
+                    fontSize: 100,
                     letterSpacing: -5,
-                    fontFeatures: tabularFigures,
+                    height: 0.95,
                   ),
                 ),
                 const Text(
@@ -588,13 +583,11 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   children: [
                     Text(
                       speedValue,
-                      style: const TextStyle(
-                        fontSize: 64,
-                        height: 0.9,
-                        fontWeight: FontWeight.w800,
+                      style: displayNumber(
+                        fontSize: 70,
                         letterSpacing: -3,
-                        color: AppColors.accent,
-                        fontFeatures: tabularFigures,
+                        height: 0.9,
+                        color: AppColors.blue,
                       ),
                     ),
                     Padding(
@@ -619,9 +612,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                       value: _recorder.progress,
                       minHeight: 10,
                       backgroundColor: AppColors.surfaceHigh,
-                      valueColor: const AlwaysStoppedAnimation(
-                        AppColors.accent,
-                      ),
+                      valueColor: const AlwaysStoppedAnimation(AppColors.blue),
                     ),
                   ),
                 ),
@@ -718,9 +709,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                       borderRadius: BorderRadius.circular(22),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.accent.withValues(
-                            alpha: 0.22 * glow,
-                          ),
+                          color: AppColors.blue.withValues(alpha: 0.22 * glow),
                           blurRadius: 44 * glow,
                           spreadRadius: 2 * glow,
                         ),
@@ -731,13 +720,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-                    decoration: cardDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFFDDF3F6), Color(0xFFF4F9FA)],
-                      ),
-                    ),
+                    decoration: cardDecoration(gradient: accelCardGradient),
                     child: Column(
                       children: [
                         Text(
@@ -765,15 +748,13 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                                 seconds == null
                                     ? '—'
                                     : seconds.toStringAsFixed(2),
-                                style: TextStyle(
-                                  fontSize: 88,
+                                style: displayNumber(
+                                  fontSize: 96,
                                   height: 0.95,
-                                  fontWeight: FontWeight.w800,
                                   letterSpacing: -4,
                                   color: valid
-                                      ? AppColors.accent
+                                      ? AppColors.blue
                                       : AppColors.textTertiary,
-                                  fontFeatures: tabularFigures,
                                 ),
                               ),
                               const Padding(
@@ -984,7 +965,7 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = danger ? AppColors.amber : AppColors.accentInk;
+    final color = danger ? AppColors.amber : AppColors.blue;
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: cardDecoration(),
@@ -1103,7 +1084,10 @@ class _MiniStat extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             label,
-            style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary),
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: AppColors.textTertiary,
+            ),
           ),
         ],
       ),

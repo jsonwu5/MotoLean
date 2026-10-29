@@ -74,6 +74,17 @@ flutter:
   assets:
     - assets/map/
 
+  # 数字/英文展示字体：Rajdhani（OFL 许可，见 assets/fonts/OFL.txt）。
+  fonts:
+    - family: Rajdhani
+      fonts:
+        - asset: assets/fonts/Rajdhani-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Rajdhani-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Rajdhani-Bold.ttf
+          weight: 700
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

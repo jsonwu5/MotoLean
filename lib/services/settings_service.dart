@@ -49,6 +49,7 @@ class SettingsService extends ChangeNotifier {
   static const _kAccelRecordTrack = 'settings.accel_record_track';
   static const _kShowLiveTrack = 'settings.show_live_track';
   static const _kMapStyle = 'settings.map_style';
+  static const _kNightDashboard = 'settings.night_dashboard';
 
   SharedPreferences? _prefs;
   bool _loaded = false;
@@ -65,6 +66,7 @@ class SettingsService extends ChangeNotifier {
   bool _accelRecordTrack = true;
   bool _showLiveTrack = true;
   MapStyle _mapStyle = MapStyle.standard;
+  bool _nightDashboard = false;
 
   bool get loaded => _loaded;
 
@@ -85,6 +87,9 @@ class SettingsService extends ChangeNotifier {
   bool get accelRecordTrack => _accelRecordTrack;
   bool get showLiveTrack => _showLiveTrack;
   MapStyle get mapStyle => _mapStyle;
+
+  /// 记录页仪表盘的深色夜间模式默认开关。
+  bool get nightDashboard => _nightDashboard;
 
   Future<void> load() async {
     try {
@@ -107,6 +112,7 @@ class SettingsService extends ChangeNotifier {
       _accelRecordTrack = prefs.getBool(_kAccelRecordTrack) ?? true;
       _showLiveTrack = prefs.getBool(_kShowLiveTrack) ?? true;
       _mapStyle = MapStyle.fromName(prefs.getString(_kMapStyle));
+      _nightDashboard = prefs.getBool(_kNightDashboard) ?? false;
       _loaded = true;
       notifyListeners();
     } catch (_) {
@@ -228,6 +234,15 @@ class SettingsService extends ChangeNotifier {
     await _saveString(_kMapStyle, value.name);
   }
 
+  Future<void> setNightDashboard(bool value) async {
+    if (_nightDashboard == value) {
+      return;
+    }
+    _nightDashboard = value;
+    notifyListeners();
+    await _saveBool(_kNightDashboard, value);
+  }
+
   /// 恢复全部默认值（设置页的「恢复默认设置」）。
   Future<void> resetToDefaults() async {
     _speedUnit = SpeedUnit.kmh;
@@ -242,6 +257,7 @@ class SettingsService extends ChangeNotifier {
     _accelRecordTrack = true;
     _showLiveTrack = true;
     _mapStyle = MapStyle.standard;
+    _nightDashboard = false;
     notifyListeners();
     try {
       final prefs = _prefs;
@@ -260,6 +276,7 @@ class SettingsService extends ChangeNotifier {
       await prefs.remove(_kAccelRecordTrack);
       await prefs.remove(_kShowLiveTrack);
       await prefs.remove(_kMapStyle);
+      await prefs.remove(_kNightDashboard);
     } catch (_) {
       // 落盘失败不影响本次会话。
     }

@@ -13,6 +13,7 @@ class StatTile extends StatelessWidget {
     this.height = 88,
     this.countUp,
     this.countFormat,
+    this.dark = false,
   });
 
   final String label;
@@ -21,6 +22,9 @@ class StatTile extends StatelessWidget {
   final bool accent;
   final double height;
 
+  /// 深色「夜间仪表盘」配色。
+  final bool dark;
+
   /// 提供时数值从 0 滚动到该值，用 [countFormat] 格式化。仅用于总结页这类
   /// 一次性展示的静态数据；实时页面不要开启。
   final double? countUp;
@@ -28,30 +32,36 @@ class StatTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final valueStyle = TextStyle(
-      fontSize: 24,
-      fontWeight: FontWeight.w800,
+    final textPrimary = dark ? AppDash.textPrimary : AppColors.textPrimary;
+    final textTertiary = dark ? AppDash.textTertiary : AppColors.textTertiary;
+    final valueStyle = displayNumber(
+      fontSize: 26,
+      letterSpacing: -0.3,
       height: 1.1,
-      letterSpacing: -0.8,
-      color: accent ? AppColors.accentInk : AppColors.textPrimary,
-      fontFeatures: tabularFigures,
+      color: accent
+          ? (dark ? AppDash.accent : AppColors.accentInk)
+          : textPrimary,
     );
     final animatable = countUp != null && countFormat != null;
     return Container(
       height: height,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: cardDecoration(color: AppColors.surface),
+      decoration: cardDecoration(
+        color: dark ? AppDash.surface : AppColors.surface,
+      ).copyWith(
+        border: dark ? Border.all(color: AppDash.divider) : null,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.8,
-              color: AppColors.textTertiary,
+              color: textTertiary,
             ),
           ),
           Row(
@@ -79,10 +89,10 @@ class StatTile extends StatelessWidget {
                   padding: const EdgeInsets.only(bottom: 2),
                   child: Text(
                     unit!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textTertiary,
+                      color: textTertiary,
                     ),
                   ),
                 ),

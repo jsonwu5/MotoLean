@@ -8,6 +8,7 @@ import '../services/settings_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../utils/units.dart';
+import '../widgets/brand_mark.dart';
 import '../widgets/motion.dart';
 import 'acceleration_history_screen.dart';
 import 'acceleration_screen.dart';
@@ -381,19 +382,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: AppColors.accent,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: const Icon(
-            Icons.two_wheeler_rounded,
-            color: AppColors.onAccent,
-            size: 24,
-          ),
-        ),
+        const BrandMark(),
         const SizedBox(width: 12),
         const Expanded(
           child: Column(
@@ -482,16 +471,11 @@ class _HeroCard extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          Positioned(
-            right: -34,
-            bottom: 4,
-            child: Transform.rotate(
-              angle: -0.35,
-              child: Icon(
-                Icons.route_rounded,
-                size: 190,
-                color: AppColors.accent.withValues(alpha: 0.10),
-              ),
+          // 装饰：一条按倾角五级的赛道线，把「压弯」隐喻放到第一眼。
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: CustomPaint(painter: _TrackRibbonPainter()),
             ),
           ),
           Padding(
@@ -572,8 +556,8 @@ class _HeroCard extends StatelessWidget {
                       TextButton(
                         onPressed: importingDemo ? null : onDemo,
                         style: TextButton.styleFrom(
-                          minimumSize: const Size(0, 32),
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          minimumSize: const Size(0, 44),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
                           foregroundColor: AppColors.textSecondary,
                           textStyle: const TextStyle(
                             fontSize: 12,
@@ -686,7 +670,7 @@ class _AccelerationCard extends StatelessWidget {
               const Icon(
                 Icons.emoji_events_rounded,
                 size: 14,
-                color: AppColors.accentInk,
+                color: AppColors.blue,
               ),
               const SizedBox(width: 6),
               Expanded(
@@ -710,7 +694,7 @@ class _AccelerationCard extends StatelessWidget {
               TextButton(
                 onPressed: onHistory,
                 style: TextButton.styleFrom(
-                  minimumSize: const Size(0, 30),
+                  minimumSize: const Size(0, 44),
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   foregroundColor: AppColors.textSecondary,
                   textStyle: const TextStyle(
@@ -774,12 +758,7 @@ class _SessionCard extends StatelessWidget {
                   children: [
                     Text(
                       session.startedAt.day.toString().padLeft(2, '0'),
-                      style: const TextStyle(
-                        fontSize: 21,
-                        fontWeight: FontWeight.w800,
-                        height: 1.05,
-                        fontFeatures: tabularFigures,
-                      ),
+                      style: displayNumber(fontSize: 23, slanted: false),
                     ),
                     Text(
                       '${session.startedAt.month}月',
@@ -877,14 +856,11 @@ class _SessionCard extends StatelessWidget {
                 children: [
                   Text(
                     lean > 0 ? '${lean.round()}°' : '—',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -1,
+                    style: displayNumber(
+                      fontSize: 30,
                       color: lean > 0
                           ? AppColors.accentInk
                           : AppColors.textTertiary,
-                      fontFeatures: tabularFigures,
                     ),
                   ),
                   const Text(
@@ -1136,4 +1112,52 @@ class _MeasurementInfoSheet extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 首页 Hero 卡装饰：右侧一条 S 形山路，中心线按倾角五段着色，
+/// 与总结页轨迹图例用同一套颜色语义。
+class _TrackRibbonPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final path = Path()
+      ..moveTo(w * 0.58, h + 16)
+      ..cubicTo(w * 0.98, h * 0.94, w * 1.04, h * 0.62, w * 0.78, h * 0.44)
+      ..cubicTo(w * 0.58, h * 0.30, w * 0.68, h * 0.12, w * 0.96, -0.05 * h);
+
+    // 底层宽路面，低透明度青雾。
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 26
+        ..strokeCap = StrokeCap.round
+        ..color = AppColors.accent.withValues(alpha: 0.06),
+    );
+
+    // 中心线按倾角等级分段：灰 → 青 → 琥珀 → 橙 → 红。
+    const colors = [
+      AppColors.textTertiary,
+      AppColors.accent,
+      AppColors.amber,
+      AppColors.orange,
+      AppColors.danger,
+    ];
+    final metric = path.computeMetrics().first;
+    final seg = metric.length / colors.length;
+    for (var i = 0; i < colors.length; i++) {
+      canvas.drawPath(
+        metric.extractPath(seg * i, seg * (i + 1)),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3.5
+          ..strokeCap = StrokeCap.round
+          ..color = colors[i].withValues(alpha: 0.30),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

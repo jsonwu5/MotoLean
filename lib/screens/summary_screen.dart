@@ -383,7 +383,10 @@ class _SummaryScreenState extends State<SummaryScreen> {
           const SizedBox(height: 8),
           Text(
             session.note!,
-            style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary),
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: AppColors.textTertiary,
+            ),
           ),
         ],
         const SizedBox(height: 18),
@@ -727,6 +730,55 @@ class RemoteMapCard extends StatelessWidget {
                     ),
                   ),
                 ),
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 168),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xD90C191E),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.14),
+                    ),
+                  ),
+                  child: const Wrap(
+                    spacing: 10,
+                    runSpacing: 5,
+                    children: [
+                      _LegendItem(
+                        color: AppColors.textTertiary,
+                        label: '0–10°',
+                        onDark: true,
+                      ),
+                      _LegendItem(
+                        color: AppColors.accent,
+                        label: '10–20°',
+                        onDark: true,
+                      ),
+                      _LegendItem(
+                        color: AppColors.amber,
+                        label: '20–30°',
+                        onDark: true,
+                      ),
+                      _LegendItem(
+                        color: AppColors.orange,
+                        label: '30–40°',
+                        onDark: true,
+                      ),
+                      _LegendItem(
+                        color: AppColors.danger,
+                        label: '40°+',
+                        onDark: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           )
         else
@@ -741,30 +793,21 @@ class RemoteMapCard extends StatelessWidget {
               ),
             ),
           ),
-        if (hasTrack) ...[
-          const SizedBox(height: 10),
-          const Wrap(
-            spacing: 12,
-            runSpacing: 6,
-            children: [
-              _LegendItem(color: AppColors.textTertiary, label: '0–10°'),
-              _LegendItem(color: AppColors.accent, label: '10–20°'),
-              _LegendItem(color: AppColors.amber, label: '20–30°'),
-              _LegendItem(color: AppColors.orange, label: '30–40°'),
-              _LegendItem(color: AppColors.danger, label: '40°+'),
-            ],
-          ),
-        ],
       ],
     );
   }
 }
 
 class _LegendItem extends StatelessWidget {
-  const _LegendItem({required this.color, required this.label});
+  const _LegendItem({
+    required this.color,
+    required this.label,
+    this.onDark = false,
+  });
 
   final Color color;
   final String label;
+  final bool onDark;
 
   @override
   Widget build(BuildContext context) {
@@ -779,7 +822,12 @@ class _LegendItem extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           label,
-          style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary),
+          style: TextStyle(
+            fontSize: onDark ? 10 : 11.5,
+            color: onDark
+                ? Colors.white.withValues(alpha: 0.75)
+                : AppColors.textTertiary,
+          ),
         ),
       ],
     );
@@ -813,7 +861,10 @@ class _HighlightChip extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             '$label ',
-            style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary),
+            style: const TextStyle(
+              fontSize: 11.5,
+              color: AppColors.textTertiary,
+            ),
           ),
           Text(
             value,
@@ -976,87 +1027,94 @@ class _SpeedChartState extends State<_SpeedChart>
         );
         final visible = points.sublist(0, count);
 
-        return SizedBox(
-          height: 176,
-          child: LineChart(
-            duration: Duration.zero,
-            LineChartData(
-              minX: 0,
-              maxX: duration,
-              minY: 0,
-              maxY: maxY,
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: false,
-                horizontalInterval: intervalY,
-                getDrawingHorizontalLine: (value) =>
-                    const FlLine(color: AppColors.divider, strokeWidth: 1),
-              ),
-              titlesData: FlTitlesData(
-                topTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                rightTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
-                ),
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 32,
-                    interval: intervalY,
-                    getTitlesWidget: (value, meta) => Text(
-                      value.round().toString(),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textTertiary,
+        return Semantics(
+          label:
+              '速度曲线，最高 ${maxSpeed.round()} ${unit.label}，'
+              '用时 ${formatDuration(duration.round())}',
+          child: ExcludeSemantics(
+            child: SizedBox(
+              height: 176,
+              child: LineChart(
+                duration: Duration.zero,
+                LineChartData(
+                  minX: 0,
+                  maxX: duration,
+                  minY: 0,
+                  maxY: maxY,
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                    horizontalInterval: intervalY,
+                    getDrawingHorizontalLine: (value) =>
+                        const FlLine(color: AppColors.divider, strokeWidth: 1),
+                  ),
+                  titlesData: FlTitlesData(
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 32,
+                        interval: intervalY,
+                        getTitlesWidget: (value, meta) => Text(
+                          value.round().toString(),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: 24,
-                    interval: intervalX,
-                    getTitlesWidget: (value, meta) => Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        formatDuration(value.round()),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textTertiary,
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 24,
+                        interval: intervalX,
+                        getTitlesWidget: (value, meta) => Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(
+                            formatDuration(value.round()),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
+                  borderData: FlBorderData(show: false),
+                  lineTouchData: const LineTouchData(enabled: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: [
+                        for (final point in visible)
+                          FlSpot(point.tSeconds, toUnit(point.speedKmh)),
+                      ],
+                      isCurved: true,
+                      curveSmoothness: 0.22,
+                      barWidth: 2.5,
+                      color: AppColors.accent,
+                      dotData: const FlDotData(show: false),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            AppColors.accent.withValues(alpha: 0.18),
+                            AppColors.accent.withValues(alpha: 0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              borderData: FlBorderData(show: false),
-              lineTouchData: const LineTouchData(enabled: false),
-              lineBarsData: [
-                LineChartBarData(
-                  spots: [
-                    for (final point in visible)
-                      FlSpot(point.tSeconds, toUnit(point.speedKmh)),
-                  ],
-                  isCurved: true,
-                  curveSmoothness: 0.22,
-                  barWidth: 2.5,
-                  color: AppColors.accent,
-                  dotData: const FlDotData(show: false),
-                  belowBarData: BarAreaData(
-                    show: true,
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        AppColors.accent.withValues(alpha: 0.18),
-                        AppColors.accent.withValues(alpha: 0),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
         );

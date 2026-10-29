@@ -8,6 +8,7 @@ import '../services/settings_service.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../utils/units.dart';
+import '../widgets/brand_mark.dart';
 import '../widgets/settings_tile.dart';
 
 /// 当前版本号。发布时与 pubspec.yaml 的 version 同步。
@@ -34,7 +35,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final value = await showSettingPicker<SpeedUnit>(
       context,
       title: '速度单位',
-      options: const [(SpeedUnit.kmh, 'km/h · 公制'), (SpeedUnit.mph, 'mph · 英制')],
+      options: const [
+        (SpeedUnit.kmh, 'km/h · 公制'),
+        (SpeedUnit.mph, 'mph · 英制'),
+      ],
       current: widget.settings.speedUnit,
     );
     if (value != null) {
@@ -46,7 +50,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final value = await showSettingPicker<DistanceUnit>(
       context,
       title: '距离单位',
-      options: const [(DistanceUnit.km, 'km · 公制'), (DistanceUnit.mi, 'mi · 英制')],
+      options: const [
+        (DistanceUnit.km, 'km · 公制'),
+        (DistanceUnit.mi, 'mi · 英制'),
+      ],
       current: widget.settings.distanceUnit,
     );
     if (value != null) {
@@ -94,8 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 divisions: 8,
                 label: '±${value.round()} m',
                 activeColor: AppColors.accent,
-                onChanged: (next) =>
-                    setDialogState(() => value = next),
+                onChanged: (next) => setDialogState(() => value = next),
               ),
               Center(
                 child: Text(
@@ -198,18 +204,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final samples = await widget.store.loadSamples(id);
         final started = session.startedAt.toUtc().toIso8601String();
         for (final sample in samples) {
-          buffer.writeln([
-            id,
-            started,
-            session.isDemo ? 1 : 0,
-            sample.tMs,
-            sample.lat?.toStringAsFixed(7) ?? '',
-            sample.lon?.toStringAsFixed(7) ?? '',
-            sample.altitudeM?.toStringAsFixed(1) ?? '',
-            sample.speedKmh?.toStringAsFixed(1) ?? '',
-            sample.leanDeg.toStringAsFixed(1),
-            sample.accuracyM?.toStringAsFixed(1) ?? '',
-          ].join(','));
+          buffer.writeln(
+            [
+              id,
+              started,
+              session.isDemo ? 1 : 0,
+              sample.tMs,
+              sample.lat?.toStringAsFixed(7) ?? '',
+              sample.lon?.toStringAsFixed(7) ?? '',
+              sample.altitudeM?.toStringAsFixed(1) ?? '',
+              sample.speedKmh?.toStringAsFixed(1) ?? '',
+              sample.leanDeg.toStringAsFixed(1),
+              sample.accuracyM?.toStringAsFixed(1) ?? '',
+            ].join(','),
+          );
           rows++;
         }
       }
@@ -353,11 +361,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '摩倾 MotoLean',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+            const Row(
+              children: [
+                BrandMark(size: 40, radius: 13),
+                SizedBox(width: 12),
+                Text(
+                  '摩倾 MotoLean',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                ),
+              ],
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 6),
             Text(
               '版本 $kAppVersion',
               style: const TextStyle(
@@ -500,6 +514,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     subtitle: '进入记录页时自动开启',
                     value: settings.defaultScreenAwake,
                     onChanged: settings.setDefaultScreenAwake,
+                  ),
+                  SettingsSwitchTile(
+                    icon: Icons.dark_mode_outlined,
+                    title: '夜间仪表盘',
+                    subtitle: '记录中界面默认使用深色，夜间骑行不刺眼',
+                    value: settings.nightDashboard,
+                    onChanged: settings.setNightDashboard,
                   ),
                   SettingsSwitchTile(
                     icon: Icons.help_outline_rounded,

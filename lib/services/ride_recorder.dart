@@ -162,16 +162,18 @@ class RideRecorder extends ChangeNotifier {
       _calibrationStarted = DateTime.now();
       _notify();
 
-      _calibrationTimer =
-          Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      _calibrationTimer = Timer.periodic(const Duration(milliseconds: 100), (
+        timer,
+      ) {
         final started = _calibrationStarted;
         if (started == null) {
           timer.cancel();
           return;
         }
         final elapsed = DateTime.now().difference(started).inMilliseconds;
-        calibrationProgress =
-            (elapsed / calibrationDurationMs).clamp(0.0, 1.0).toDouble();
+        calibrationProgress = (elapsed / calibrationDurationMs)
+            .clamp(0.0, 1.0)
+            .toDouble();
         _notify();
         if (elapsed >= calibrationDurationMs) {
           timer.cancel();
@@ -245,8 +247,7 @@ class RideRecorder extends ChangeNotifier {
       durationS: _clock?.elapsed.inSeconds ?? 0,
       movingS: _movingSeconds.round(),
       maxSpeedMps: _maxSpeedMps,
-      avgSpeedMps:
-          _movingSeconds > 0 ? _distanceM / _movingSeconds : 0.0,
+      avgSpeedMps: _movingSeconds > 0 ? _distanceM / _movingSeconds : 0.0,
       maxLeanLeftDeg: _maxLeanLeft,
       maxLeanRightDeg: _maxLeanRight,
       elevationGainM: _elevationGain,
@@ -355,6 +356,15 @@ class RideRecorder extends ChangeNotifier {
       if (_calibrationAccel.length > 500) {
         _calibrationAccel.removeAt(0);
       }
+      // 校准期间用原始重力倾角驱动 UI 水平泡，帮用户扶正车身；
+      // 此时零位未确定，原始值正好反映车身的物理倾斜。
+      _leanDeg =
+          math.atan2(
+            -accel.x,
+            math.sqrt(accel.y * accel.y + accel.z * accel.z),
+          ) *
+          180 /
+          math.pi;
       return;
     }
     if (state != RecorderState.recording) {
@@ -438,8 +448,7 @@ class RideRecorder extends ChangeNotifier {
     }
 
     if (_lastSampleAt == null ||
-        now.difference(_lastSampleAt!) >=
-            const Duration(milliseconds: 900)) {
+        now.difference(_lastSampleAt!) >= const Duration(milliseconds: 900)) {
       unawaited(_writeSample());
     }
     _notify();
@@ -495,7 +504,8 @@ class RideRecorder extends ChangeNotifier {
     _writingSample = true;
     try {
       final now = DateTime.now();
-      final fresh = _positionAt != null &&
+      final fresh =
+          _positionAt != null &&
           now.difference(_positionAt!) < const Duration(seconds: 6);
       final position = fresh ? _latestPosition : null;
       final sample = RideSample(

@@ -31,6 +31,7 @@ class RecordScreen extends StatefulWidget {
 class _RecordScreenState extends State<RecordScreen> {
   late final RideRecorder _recorder;
   bool _screenAwake = false;
+  bool _nightMode = false;
   bool _handlingBack = false;
   bool _stopping = false;
   RecorderState? _prevState;
@@ -40,6 +41,7 @@ class _RecordScreenState extends State<RecordScreen> {
   @override
   void initState() {
     super.initState();
+    _nightMode = widget.settings.nightDashboard;
     _recorder = RideRecorder(
       store: widget.store,
       locationService: LocationService(),
@@ -106,6 +108,13 @@ class _RecordScreenState extends State<RecordScreen> {
     } catch (_) {
       _showSnack('无法切换屏幕常亮');
     }
+  }
+
+  /// 骑行中随时切换深色仪表盘；写入设置作为下次进入的默认值。
+  void _toggleNightMode() {
+    HapticFeedback.selectionClick();
+    setState(() => _nightMode = !_nightMode);
+    unawaited(widget.settings.setNightDashboard(_nightMode));
   }
 
   Future<void> _handleBack() async {
@@ -417,13 +426,10 @@ class _RecordScreenState extends State<RecordScreen> {
                         children: [
                           Text(
                             '$remaining',
-                            style: const TextStyle(
-                              fontSize: 72,
-                              height: 1,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -2,
+                            style: displayNumber(
+                              fontSize: 78,
                               color: AppColors.accent,
-                              fontFeatures: tabularFigures,
+                              letterSpacing: -2,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -456,7 +462,9 @@ class _RecordScreenState extends State<RecordScreen> {
                     color: AppColors.textSecondary,
                   ),
                 ),
-                const SizedBox(height: 26),
+                const SizedBox(height: 20),
+                _LevelBubble(leanDeg: _recorder.leanDeg),
+                const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: cardDecoration(),
@@ -582,6 +590,17 @@ class _RecordScreenState extends State<RecordScreen> {
     final recording = _recorder.state == RecorderState.recording;
     final unit = widget.settings.speedUnit;
     final distanceUnit = widget.settings.distanceUnit;
+    final dark = _nightMode;
+    // 深色仪表盘的语义色：在碳黑底上亮一档，保证对比度。
+    final textPrimary = dark ? AppDash.textPrimary : AppColors.textPrimary;
+    final textSecondary = dark
+        ? AppDash.textSecondary
+        : AppColors.textSecondary;
+    final textTertiary = dark ? AppDash.textTertiary : AppColors.textTertiary;
+    final dividerColor = dark ? AppDash.divider : AppColors.divider;
+    final accentInkLike = dark ? AppDash.accent : AppColors.accentInk;
+    final amberLike = dark ? AppDash.amber : AppColors.amber;
+    final dangerLike = dark ? AppDash.danger : AppColors.danger;
     final track = [
       for (final point in _recorder.track)
         RideMapPoint(lat: point.lat, lon: point.lon, leanDeg: point.leanDeg),
@@ -590,312 +609,350 @@ class _RecordScreenState extends State<RecordScreen> {
         ? '等待 GPS'
         : 'GPS ±${(_recorder.gpsAccuracyM ?? 0).round()}m';
     final gpsColor = !_recorder.gpsFresh
-        ? AppColors.textTertiary
+        ? textTertiary
         : (_recorder.gpsAccuracyM ?? 99) <= 25
-        ? AppColors.accentInk
+        ? accentInkLike
         : (_recorder.gpsAccuracyM ?? 99) <= 45
-        ? AppColors.amber
-        : AppColors.danger;
+        ? amberLike
+        : dangerLike;
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(8, 6, 12, 0),
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: _handleBack,
-                tooltip: '结束记录',
-                icon: const Icon(Icons.close_rounded),
-              ),
-              const SizedBox(width: 2),
-              _LivePill(paused: paused),
-              const SizedBox(width: 14),
-              Text(
-                formatDuration(_recorder.elapsedSeconds),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5,
-                  fontFeatures: tabularFigures,
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: _toggleScreenAwake,
-                tooltip: _screenAwake ? '关闭屏幕常亮' : '开启屏幕常亮',
-                style: IconButton.styleFrom(
-                  backgroundColor: _screenAwake
-                      ? AppColors.accentSoft
-                      : AppColors.surface,
-                  side: BorderSide(
-                    color: _screenAwake
-                        ? AppColors.accent.withValues(alpha: 0.35)
-                        : AppColors.divider,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: Container(
+        color: dark ? AppDash.background : null,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 6, 12, 0),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: _handleBack,
+                    tooltip: '结束记录',
+                    icon: Icon(Icons.close_rounded, color: textPrimary),
                   ),
-                ),
-                icon: Icon(
-                  Icons.light_mode_rounded,
-                  size: 20,
-                  color: _screenAwake
-                      ? AppColors.accentInk
-                      : AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-            child: Column(
-              children: [
-                if (_recorder.calibrationWarning != null)
-                  _InlineBanner(
-                    icon: Icons.straighten_rounded,
-                    color: AppColors.amber,
-                    text: '校准提示：${_recorder.calibrationWarning}',
-                  ),
-                if (!_recorder.backgroundAllowed)
-                  _InlineBanner(
-                    icon: Icons.nightlight_round,
-                    color: AppColors.amber,
-                    text: '未开启“始终允许”定位，熄屏后可能中断记录。',
-                    actionLabel: '去设置',
-                    onAction: () => _recorder.locationService.openSettings(),
-                  ),
-                if (paused)
-                  _InlineBanner(
-                    icon: Icons.pause_circle_outline_rounded,
-                    color: AppColors.blue,
-                    text: '已暂停，速度、倾角与轨迹不会写入本次行程。',
-                  ),
-                AnimatedSlide(
-                  offset: paused ? const Offset(0, -0.015) : Offset.zero,
-                  duration: AppMotion.fast,
-                  curve: AppMotion.curve,
-                  child: AnimatedOpacity(
-                    opacity: paused ? 0.42 : 1,
-                    duration: const Duration(milliseconds: 220),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 10),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            TweenAnimationBuilder<double>(
-                              tween: Tween(end: _recorder.speedKmh),
-                              duration: AppMotion.reduced(context)
-                                  ? Duration.zero
-                                  : const Duration(milliseconds: 350),
-                              curve: AppMotion.curve,
-                              builder: (context, speedKmh, _) => Text(
-                                formatSpeedValue(speedKmh / 3.6, unit),
-                                style: const TextStyle(
-                                  fontSize: 82,
-                                  height: 0.86,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -4,
-                                  fontFeatures: tabularFigures,
-                                ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                bottom: 10,
-                                left: 6,
-                              ),
-                              child: Text(
-                                unit.label,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary.withValues(
-                                    alpha: 0.9,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  const Text(
-                                    '本次最高',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      letterSpacing: 0.8,
-                                      color: AppColors.textTertiary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    formatSpeedWithUnit(
-                                      _recorder.maxSpeedKmh / 3.6,
-                                      unit,
-                                    ),
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textSecondary,
-                                      fontFeatures: tabularFigures,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        LeanGauge(
-                          leanDeg: _recorder.leanDeg,
-                          maxLeftDeg: _recorder.maxLeanLeftDeg,
-                          maxRightDeg: _recorder.maxLeanRightDeg,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: StatTile(
-                        label: '距离',
-                        value: formatDistanceWithUnit(
-                          _recorder.distanceM,
-                          distanceUnit,
-                        ),
-                        height: 80,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: StatTile(
-                        label: '移动',
-                        value: formatDuration(_recorder.movingSeconds),
-                        height: 80,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: StatTile(
-                        label: '均速',
-                        value: formatSpeedValue(
-                          _recorder.avgSpeedKmh / 3.6,
-                          unit,
-                        ),
-                        unit: unit.label,
-                        height: 80,
-                        accent: true,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    const Text(
-                      '实时轨迹',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const Spacer(),
-                    _StatusChip(label: gpsLabel, color: gpsColor),
-                    const SizedBox(width: 6),
-                    _StatusChip(
-                      label: _recorder.sensorFresh ? 'IMU 正常' : 'IMU 无数据',
-                      color: _recorder.sensorFresh
-                          ? AppColors.accentInk
-                          : AppColors.danger,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (widget.settings.showLiveTrack)
-                  RideMap(
-                    points: track,
-                    live: true,
-                    height: 158,
-                    mapStyle: widget.settings.mapStyle,
-                  ),
-                if (_recorder.gpsError != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(width: 2),
+                  _LivePill(paused: paused, dark: dark),
+                  const SizedBox(width: 14),
                   Text(
-                    _recorder.gpsError!,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      color: AppColors.amber,
+                    formatDuration(_recorder.elapsedSeconds),
+                    style: displayNumber(
+                      fontSize: 26,
+                      letterSpacing: -0.3,
+                      color: textPrimary,
                     ),
                   ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            border: const Border(top: BorderSide(color: AppColors.divider)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: PressableScale(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      HapticFeedback.selectionClick();
-                      if (paused) {
-                        _recorder.resume();
-                      } else if (recording) {
-                        _recorder.pause();
-                      }
-                    },
-                    icon: Icon(
-                      paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-                      size: 20,
-                    ),
-                    label: Text(paused ? '继续记录' : '暂停'),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(54),
-                      foregroundColor: paused
-                          ? AppColors.accentInk
-                          : AppColors.textPrimary,
+                  const Spacer(),
+                  IconButton(
+                    onPressed: _toggleNightMode,
+                    tooltip: dark ? '切换浅色仪表盘' : '切换夜间仪表盘',
+                    style: IconButton.styleFrom(
+                      backgroundColor: dark
+                          ? AppDash.accent.withValues(alpha: 0.14)
+                          : AppColors.surface,
                       side: BorderSide(
-                        color: paused
-                            ? AppColors.accent.withValues(alpha: 0.4)
+                        color: dark
+                            ? AppDash.accent.withValues(alpha: 0.35)
                             : AppColors.divider,
                       ),
                     ),
+                    icon: Icon(
+                      dark ? Icons.dark_mode_rounded : Icons.dark_mode_outlined,
+                      size: 20,
+                      color: dark ? AppDash.accent : AppColors.textSecondary,
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: PressableScale(
-                  child: FilledButton.icon(
-                    onPressed: _askStopAndStop,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.danger,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(54),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: _toggleScreenAwake,
+                    tooltip: _screenAwake ? '关闭屏幕常亮' : '开启屏幕常亮',
+                    style: IconButton.styleFrom(
+                      backgroundColor: _screenAwake
+                          ? (dark
+                                ? AppDash.accent.withValues(alpha: 0.14)
+                                : AppColors.accentSoft)
+                          : (dark ? AppDash.surface : AppColors.surface),
+                      side: BorderSide(
+                        color: _screenAwake
+                            ? (dark ? AppDash.accent : AppColors.accent)
+                                  .withValues(alpha: 0.35)
+                            : dividerColor,
                       ),
                     ),
-                    icon: const Icon(Icons.stop_rounded, size: 22),
-                    label: const Text('结束'),
+                    icon: Icon(
+                      Icons.light_mode_rounded,
+                      size: 20,
+                      color: _screenAwake
+                          ? accentInkLike
+                          : (dark
+                                ? AppDash.textSecondary
+                                : AppColors.textSecondary),
+                    ),
                   ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+                child: Column(
+                  children: [
+                    if (_recorder.calibrationWarning != null)
+                      _InlineBanner(
+                        icon: Icons.straighten_rounded,
+                        color: amberLike,
+                        dark: dark,
+                        text: '校准提示：${_recorder.calibrationWarning}',
+                      ),
+                    if (!_recorder.backgroundAllowed)
+                      _InlineBanner(
+                        icon: Icons.nightlight_round,
+                        color: amberLike,
+                        dark: dark,
+                        text: '未开启“始终允许”定位，熄屏后可能中断记录。',
+                        actionLabel: '去设置',
+                        onAction: () =>
+                            _recorder.locationService.openSettings(),
+                      ),
+                    if (paused)
+                      _InlineBanner(
+                        icon: Icons.pause_circle_outline_rounded,
+                        color: dark ? AppDash.blue : AppColors.blue,
+                        dark: dark,
+                        text: '已暂停，速度、倾角与轨迹不会写入本次行程。',
+                      ),
+                    AnimatedSlide(
+                      offset: paused ? const Offset(0, -0.015) : Offset.zero,
+                      duration: AppMotion.fast,
+                      curve: AppMotion.curve,
+                      child: AnimatedOpacity(
+                        opacity: paused ? 0.42 : 1,
+                        duration: const Duration(milliseconds: 220),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 10),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween(end: _recorder.speedKmh),
+                                  duration: AppMotion.reduced(context)
+                                      ? Duration.zero
+                                      : const Duration(milliseconds: 350),
+                                  curve: AppMotion.curve,
+                                  builder: (context, speedKmh, _) => Text(
+                                    formatSpeedValue(speedKmh / 3.6, unit),
+                                    style: displayNumber(
+                                      fontSize: 96,
+                                      letterSpacing: -2,
+                                      height: 0.86,
+                                      color: textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                    bottom: 10,
+                                    left: 6,
+                                  ),
+                                  child: Text(
+                                    unit.label,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: textSecondary.withValues(
+                                        alpha: 0.9,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '本次最高',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          letterSpacing: 0.8,
+                                          color: textTertiary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        formatSpeedWithUnit(
+                                          _recorder.maxSpeedKmh / 3.6,
+                                          unit,
+                                        ),
+                                        style: displayNumber(
+                                          fontSize: 15,
+                                          slanted: false,
+                                          color: textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            LeanGauge(
+                              leanDeg: _recorder.leanDeg,
+                              maxLeftDeg: _recorder.maxLeanLeftDeg,
+                              maxRightDeg: _recorder.maxLeanRightDeg,
+                              dark: dark,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: StatTile(
+                            label: '距离',
+                            value: formatDistanceWithUnit(
+                              _recorder.distanceM,
+                              distanceUnit,
+                            ),
+                            height: 80,
+                            dark: dark,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: StatTile(
+                            label: '移动',
+                            value: formatDuration(_recorder.movingSeconds),
+                            height: 80,
+                            dark: dark,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: StatTile(
+                            label: '均速',
+                            value: formatSpeedValue(
+                              _recorder.avgSpeedKmh / 3.6,
+                              unit,
+                            ),
+                            unit: unit.label,
+                            height: 80,
+                            accent: true,
+                            dark: dark,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Text(
+                          '实时轨迹',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: textSecondary,
+                          ),
+                        ),
+                        const Spacer(),
+                        _StatusChip(label: gpsLabel, color: gpsColor),
+                        const SizedBox(width: 6),
+                        _StatusChip(
+                          label: _recorder.sensorFresh ? 'IMU 正常' : 'IMU 无数据',
+                          color: _recorder.sensorFresh
+                              ? accentInkLike
+                              : dangerLike,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (widget.settings.showLiveTrack)
+                      RideMap(
+                        points: track,
+                        live: true,
+                        height: 158,
+                        // 夜间仪表盘强制暗色底图，避免一块亮图破坏整体。
+                        mapStyle: dark
+                            ? MapStyle.dark
+                            : widget.settings.mapStyle,
+                      ),
+                    if (_recorder.gpsError != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _recorder.gpsError!,
+                        style: TextStyle(fontSize: 11.5, color: amberLike),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+              decoration: BoxDecoration(
+                color: dark ? AppDash.background : AppColors.background,
+                border: Border(top: BorderSide(color: dividerColor)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: PressableScale(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          HapticFeedback.selectionClick();
+                          if (paused) {
+                            _recorder.resume();
+                          } else if (recording) {
+                            _recorder.pause();
+                          }
+                        },
+                        icon: Icon(
+                          paused
+                              ? Icons.play_arrow_rounded
+                              : Icons.pause_rounded,
+                          size: 20,
+                        ),
+                        label: Text(paused ? '继续记录' : '暂停'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(54),
+                          foregroundColor: paused ? accentInkLike : textPrimary,
+                          side: BorderSide(
+                            color: paused
+                                ? accentInkLike.withValues(alpha: 0.4)
+                                : dividerColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: PressableScale(
+                      child: FilledButton.icon(
+                        onPressed: _askStopAndStop,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: dangerLike,
+                          foregroundColor: dark
+                              ? AppDash.onDanger
+                              : Colors.white,
+                          minimumSize: const Size.fromHeight(54),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        icon: const Icon(Icons.stop_rounded, size: 22),
+                        label: const Text('结束'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -1040,13 +1097,16 @@ class _StepCard extends StatelessWidget {
 }
 
 class _LivePill extends StatelessWidget {
-  const _LivePill({required this.paused});
+  const _LivePill({required this.paused, this.dark = false});
 
   final bool paused;
+  final bool dark;
 
   @override
   Widget build(BuildContext context) {
-    final color = paused ? AppColors.amber : AppColors.danger;
+    final color = paused
+        ? (dark ? AppDash.amber : AppColors.amber)
+        : (dark ? AppDash.danger : AppColors.danger);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -1121,6 +1181,7 @@ class _InlineBanner extends StatelessWidget {
     required this.text,
     this.actionLabel,
     this.onAction,
+    this.dark = false,
   });
 
   final IconData icon;
@@ -1128,6 +1189,7 @@ class _InlineBanner extends StatelessWidget {
   final String text;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final bool dark;
 
   @override
   Widget build(BuildContext context) {
@@ -1146,10 +1208,10 @@ class _InlineBanner extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 height: 1.45,
-                color: AppColors.textSecondary,
+                color: dark ? AppDash.textSecondary : AppColors.textSecondary,
               ),
             ),
           ),
@@ -1157,8 +1219,8 @@ class _InlineBanner extends StatelessWidget {
             TextButton(
               onPressed: onAction,
               style: TextButton.styleFrom(
-                minimumSize: const Size(0, 30),
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: const Size(0, 44),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 foregroundColor: color,
                 textStyle: const TextStyle(
                   fontSize: 12,
@@ -1206,6 +1268,97 @@ class _StatusChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 校准期间的实时水平泡：原始重力倾角驱动游标，|倾角| < 2° 视为扶正。
+class _LevelBubble extends StatelessWidget {
+  const _LevelBubble({required this.leanDeg});
+
+  final double leanDeg;
+
+  @override
+  Widget build(BuildContext context) {
+    final upright = leanDeg.abs() < 2;
+    final bubbleColor = upright ? AppColors.accentInk : AppColors.textTertiary;
+    return Semantics(
+      label:
+          '当前倾斜 ${leanDeg.abs().toStringAsFixed(1)} 度'
+          '${upright ? '，已扶正' : ''}',
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: cardDecoration(),
+          child: Row(
+            children: [
+              Icon(Icons.straighten_rounded, size: 18, color: bubbleColor),
+              const SizedBox(width: 12),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final half = constraints.maxWidth / 2;
+                    // ±15° 映射满幅，超出钳制在轨道两端。
+                    final offset =
+                        (leanDeg.clamp(-15.0, 15.0) / 15) * (half - 7);
+                    return SizedBox(
+                      height: 26,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceHigh,
+                              borderRadius: BorderRadius.circular(13),
+                            ),
+                          ),
+                          Container(
+                            width: 26,
+                            decoration: BoxDecoration(
+                              color: bubbleColor.withValues(
+                                alpha: upright ? 0.25 : 0.12,
+                              ),
+                              borderRadius: BorderRadius.circular(13),
+                            ),
+                          ),
+                          Transform.translate(
+                            offset: Offset(offset, 0),
+                            child: Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: bubbleColor,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                width: 56,
+                child: Text(
+                  '${leanDeg.abs().toStringAsFixed(1)}°',
+                  textAlign: TextAlign.right,
+                  style: displayNumber(
+                    fontSize: 20,
+                    slanted: false,
+                    color: bubbleColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -197,7 +197,7 @@ class _AccelerationHistoryScreenState extends State<AccelerationHistoryScreen> {
 
     return RefreshIndicator(
       onRefresh: _load,
-      color: AppColors.accent,
+      color: AppColors.blue,
       backgroundColor: AppColors.surfaceHigh,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 32),
@@ -318,15 +318,12 @@ class _RunCard extends StatelessWidget {
                     children: [
                       Text(
                         run.resultSeconds.toStringAsFixed(2),
-                        style: TextStyle(
-                          fontSize: 30,
-                          height: 1,
-                          fontWeight: FontWeight.w800,
+                        style: displayNumber(
+                          fontSize: 32,
                           letterSpacing: -1.5,
                           color: active
-                              ? AppColors.accentInk
+                              ? AppColors.blue
                               : AppColors.textTertiary,
-                          fontFeatures: tabularFigures,
                         ),
                       ),
                       const Padding(
@@ -371,7 +368,7 @@ class _RunCard extends StatelessWidget {
                         ),
                         if (run.isDemo) ...[
                           const SizedBox(width: 6),
-                          const _Badge(label: '演示', color: AppColors.accentInk),
+                          const _Badge(label: '演示', color: AppColors.blue),
                         ],
                         if (!run.valid) ...[
                           const SizedBox(width: 6),
@@ -470,7 +467,7 @@ class _SummaryCard extends StatelessWidget {
               fontSize: 16,
               fontWeight: FontWeight.w800,
               fontFeatures: tabularFigures,
-              color: accent ? AppColors.accentInk : AppColors.textPrimary,
+              color: accent ? AppColors.blue : AppColors.textPrimary,
             ),
           ),
           const SizedBox(height: 3),
@@ -509,7 +506,7 @@ class _EmptyState extends StatelessWidget {
               ),
               child: const Icon(
                 Icons.speed_rounded,
-                color: AppColors.accentInk,
+                color: AppColors.blue,
                 size: 30,
               ),
             ),
