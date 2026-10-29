@@ -52,3 +52,6 @@ android/key.properties
 android/app/*.jks
 android/app/*.keystore
 
+# 本机私有构建配置（签名团队、地图 Key、代理、目标设备）
+.env.local
+ios/Flutter/Signing.xcconfig
