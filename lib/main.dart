@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_tencent_map/flutter_tencent_map.dart';
 
 import 'app.dart';
+import 'config/map_config.dart';
 import 'services/ride_store.dart';
 import 'services/settings_service.dart';
 import 'theme.dart';
@@ -18,6 +20,8 @@ Future<void> main() async {
       systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
+  await _initTencentMap();
+
   final store = RideStore();
   final settings = SettingsService();
   try {
@@ -27,6 +31,20 @@ Future<void> main() async {
     runApp(MotoLeanApp(store: store, settings: settings));
   } catch (error) {
     runApp(_StartupFailureApp(message: '$error'));
+  }
+}
+
+/// 腾讯地图 SDK 要求先声明隐私协议、再启动。
+/// 未配置 Key 时整段跳过，地图组件会显示未启用的占位卡。
+Future<void> _initTencentMap() async {
+  if (!MapConfig.configured) {
+    return;
+  }
+  try {
+    await TencentMapInitializer.setAgreePrivacy(true);
+    await TencentMapInitializer.start();
+  } catch (_) {
+    // 地图初始化失败不应阻塞记录功能。
   }
 }
 
@@ -83,7 +101,7 @@ class _StartupFailureApp extends StatelessWidget {
                   const Text(
                     '请检查设备存储空间后重新打开应用。',
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: AppColors.textTertiary,
                     ),
                   ),

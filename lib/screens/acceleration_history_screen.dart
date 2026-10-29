@@ -280,16 +280,6 @@ class _AccelerationHistoryScreenState extends State<AccelerationHistoryScreen> {
             ),
             const SizedBox(height: 10),
           ],
-          const SizedBox(height: 12),
-          const Text(
-            '成绩为手机 GPS 估算值，适合同一设备横向对比。',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 10,
-              height: 1.6,
-              color: AppColors.textTertiary,
-            ),
-          ),
         ],
       ),
     );
@@ -355,7 +345,7 @@ class _RunCard extends StatelessWidget {
                   Text(
                     '0–${run.targetSpeedKmh.round()} km/h',
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 11.5,
                       color: AppColors.textTertiary,
                     ),
                   ),
@@ -410,7 +400,7 @@ class _RunCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 10.5,
+                        fontSize: 11.5,
                         color: AppColors.textTertiary,
                       ),
                     ),
@@ -447,7 +437,7 @@ class _Badge extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 8,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           color: color,
         ),
@@ -487,7 +477,7 @@ class _SummaryCard extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontSize: 9.5,
+              fontSize: 11.5,
               color: AppColors.textTertiary,
             ),
           ),
@@ -530,7 +520,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             const Text(
-              '找一段封闭直道，停车、保持静止，然后开始第一次测试。',
+              '找一段封闭直道，停稳后开始第一次测试。',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12,

@@ -1,16 +1,33 @@
 PODS:
   - Flutter (1.0.0)
+  - flutter_tencent_map (1.0.0):
+    - Flutter
+    - Tencent-MapSDK (>= 5.7.7)
+  - Tencent-MapFoundation (5.2.5)
+  - Tencent-MapSDK (6.15.2)
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
+  - flutter_tencent_map (from `.symlinks/plugins/flutter_tencent_map/ios`)
+  - Tencent-MapFoundation (~> 5.2)
+
+SPEC REPOS:
+  trunk:
+    - Tencent-MapFoundation
+    - Tencent-MapSDK
 
 EXTERNAL SOURCES:
   Flutter:
     :path: Flutter
+  flutter_tencent_map:
+    :path: ".symlinks/plugins/flutter_tencent_map/ios"
 
 SPEC CHECKSUMS:
   Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
+  flutter_tencent_map: 1118de87cdc10cc8c2d37631c2feb4cf3c72c502
+  Tencent-MapFoundation: 01fc9e2e16018f7b9386fafbe3b913b2feb4109e
+  Tencent-MapSDK: d278f7226b4c43f7fe0e05779bc49e4bb2571ba0
 
-PODFILE CHECKSUM: 281f726223dade6384baa6fb3a33178b5301adcc
+PODFILE CHECKSUM: 70a5608566f27988e678b9fac31687cf33b42c59
 
 COCOAPODS: 1.17.0

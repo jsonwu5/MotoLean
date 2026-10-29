@@ -25,7 +25,7 @@ class SettingsSection extends StatelessWidget {
             child: Text(
               title,
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.2,
                 color: AppColors.textTertiary,
@@ -109,7 +109,7 @@ class SettingsTile extends StatelessWidget {
                     Text(
                       subtitle!,
                       style: const TextStyle(
-                        fontSize: 10.5,
+                        fontSize: 11.5,
                         height: 1.4,
                         color: AppColors.textTertiary,
                       ),

@@ -231,15 +231,6 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                     letterSpacing: -1,
                   ),
                 ),
-                const SizedBox(height: 10),
-                const Text(
-                  '用手机 GPS 测量 0–100 km/h 加速成绩，附带 0–60、60–130 与坡度。',
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.5,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
                 const SizedBox(height: 22),
                 const _InfoCard(
                   icon: Icons.speed_rounded,
@@ -247,14 +238,6 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   body:
                       '默认从静止起算。开启「1 英尺 rollout」后，计时从车辆移动约 30 cm 开始，'
                       '成绩会比静止口径短约 0.2–0.4 秒。',
-                ),
-                const SizedBox(height: 10),
-                const _InfoCard(
-                  icon: Icons.satellite_alt_rounded,
-                  title: '数据来源',
-                  body:
-                      'GPS 多普勒测速，更新率约 1 Hz。成绩通过相邻采样点插值计算，'
-                      '手机误差约 ±0.1–0.3 秒，适合同机对比，不适合与专业设备比绝对值。',
                 ),
                 const SizedBox(height: 10),
                 const _InfoCard(
@@ -269,17 +252,6 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                     onPressed: _recorder.prepare,
                     icon: const Icon(Icons.play_arrow_rounded, size: 24),
                     label: const Text('开始检测'),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Center(
-                  child: Text(
-                    '需要空旷天空与良好 GPS 信号，隧道与山谷内不要测试。',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: AppColors.textTertiary.withValues(alpha: 0.8),
-                    ),
                   ),
                 ),
               ],
@@ -470,7 +442,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                         child: Text(
                           '确认车辆已停稳、前方道路笔直且无人无车。开始后请双手握好车把。',
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             height: 1.6,
                             color: AppColors.textSecondary,
                           ),
@@ -574,7 +546,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                     ? 'GPS ±${(_recorder.gpsAccuracyM ?? 0).round()} m'
                     : 'GPS 信号变差',
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w600,
                   color: _recorder.gpsOk
                       ? AppColors.textSecondary
@@ -658,7 +630,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   '目标 ${_formatTarget(unit)}'
                   '${_recorder.rollout ? ' · rollout' : ''}',
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     color: AppColors.textSecondary,
                   ),
                 ),
@@ -823,7 +795,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                           const Text(
                             '含 1 英尺 rollout',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11.5,
                               color: AppColors.textSecondary,
                             ),
                           ),
@@ -883,7 +855,7 @@ class _AccelerationScreenState extends State<AccelerationScreen> {
                   Text(
                     _recorder.errorMessage!,
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       color: AppColors.amber,
                     ),
                   ),
@@ -1080,7 +1052,7 @@ class _TargetCard extends StatelessWidget {
         children: [
           const Text(
             '本次目标',
-            style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+            style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
           ),
           const SizedBox(height: 6),
           Text(
@@ -1097,7 +1069,7 @@ class _TargetCard extends StatelessWidget {
           Text(
             rollout ? '含 1 英尺 rollout' : '从静止起算',
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               color: AppColors.textSecondary,
             ),
           ),
@@ -1131,7 +1103,7 @@ class _MiniStat extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             label,
-            style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
+            style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary),
           ),
         ],
       ),
@@ -1207,7 +1179,7 @@ class _LivePill extends StatelessWidget {
           Text(
             '测试中',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 11.5,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.6,
               color: AppColors.danger,

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:flutter_tencent_map/flutter_tencent_map.dart';
 
+import '../config/map_config.dart';
 import '../services/settings_service.dart';
 import '../theme.dart';
+import '../utils/coords.dart';
 
+/// 轨迹上的一個点：WGS-84 原始坐标 + 该点的瞬时倾角。
 class RideMapPoint {
   const RideMapPoint({required this.lat, required this.lon, this.leanDeg = 0});
 
@@ -13,6 +15,10 @@ class RideMapPoint {
   final double leanDeg;
 }
 
+/// 基于腾讯地图 SDK 的轨迹地图。
+///
+/// GPS 记录的是 WGS-84，腾讯地图使用 GCJ-02，展示前统一做坐标转换，
+/// 避免轨迹整体偏移几百米。
 class RideMap extends StatefulWidget {
   const RideMap({
     super.key,
@@ -20,7 +26,6 @@ class RideMap extends StatefulWidget {
     this.height = 200,
     this.colored = false,
     this.live = false,
-    this.current,
     this.mapStyle = MapStyle.satellite,
     this.animateIn = false,
   });
@@ -29,7 +34,6 @@ class RideMap extends StatefulWidget {
   final double height;
   final bool colored;
   final bool live;
-  final LatLng? current;
   final MapStyle mapStyle;
 
   /// 非实时模式下，轨迹按时间轴从头绘制一遍（约 1 秒）。
@@ -40,13 +44,14 @@ class RideMap extends StatefulWidget {
 }
 
 class _RideMapState extends State<RideMap> with SingleTickerProviderStateMixin {
-  final MapController _mapController = MapController();
+  TencentMapController? _controller;
   bool _mapReady = false;
 
   late final AnimationController _drawController = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1000),
   )..addListener(() => setState(() {}));
+
   late final Animation<double> _drawProgress = CurvedAnimation(
     parent: _drawController,
     curve: AppMotion.curve,
@@ -72,18 +77,8 @@ class _RideMapState extends State<RideMap> with SingleTickerProviderStateMixin {
         ..reset()
         ..forward();
     }
-    if (!widget.live) {
-      return;
-    }
-    final oldLast = oldWidget.points.isEmpty ? null : oldWidget.points.last;
-    final newLast = widget.points.isEmpty ? null : widget.points.last;
-    final changed =
-        oldLast == null ||
-        newLast == null ||
-        oldLast.lat != newLast.lat ||
-        oldLast.lon != newLast.lon;
-    if (changed) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _followCurrent());
+    if (widget.live && oldWidget.points.length != widget.points.length) {
+      _followCurrent();
     }
   }
 
@@ -93,93 +88,129 @@ class _RideMapState extends State<RideMap> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
+  LatLng _gcj(RideMapPoint point) {
+    final (lat, lon) = GeoCoords.toGcj(lat: point.lat, lon: point.lon);
+    return LatLng(lat, lon);
+  }
+
   void _followCurrent() {
-    if (!mounted || !_mapReady) {
+    final controller = _controller;
+    if (controller == null || !_mapReady || widget.points.isEmpty) {
       return;
     }
-    final target =
-        widget.current ??
-        (widget.points.isEmpty
-            ? null
-            : LatLng(widget.points.last.lat, widget.points.last.lon));
-    if (target == null) {
+    final target = _gcj(widget.points.last);
+    controller.moveCamera(CameraUpdate.newLatLngZoom(target, 16));
+  }
+
+  void _fitBounds() {
+    final controller = _controller;
+    if (controller == null) {
       return;
     }
-    try {
-      _mapController.move(target, 16);
-    } catch (_) {
-      // The controller can be briefly unavailable during route transitions.
+    if (widget.live || widget.points.length < 2) {
+      return;
     }
+    var minLat = 90.0, maxLat = -90.0, minLon = 180.0, maxLon = -180.0;
+    for (final point in widget.points) {
+      final gcj = _gcj(point);
+      if (gcj.latitude < minLat) minLat = gcj.latitude;
+      if (gcj.latitude > maxLat) maxLat = gcj.latitude;
+      if (gcj.longitude < minLon) minLon = gcj.longitude;
+      if (gcj.longitude > maxLon) maxLon = gcj.longitude;
+    }
+    controller.moveCamera(
+      CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(minLat, minLon),
+          northeast: LatLng(maxLat, maxLon),
+        ),
+        40,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final points = widget.points;
-    if (points.isEmpty) {
-      return Container(
+    if (widget.points.isEmpty) {
+      return _StatusCard(
         height: widget.height,
-        decoration: cardDecoration(color: AppColors.surfaceHigh),
-        child: const Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.route_outlined,
-                color: AppColors.textTertiary,
-                size: 28,
-              ),
-              SizedBox(height: 8),
-              Text(
-                '等待 GPS 轨迹…',
-                style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
-              ),
-            ],
-          ),
-        ),
+        icon: Icons.route_outlined,
+        title: '等待 GPS 轨迹…',
       );
     }
 
-    // 取景始终基于全量轨迹；绘制层按动画进度截断。
-    final fullLatLngs = [for (final p in points) LatLng(p.lat, p.lon)];
-    var visiblePoints = points;
+    if (!MapConfig.configured) {
+      return _StatusCard(
+        height: widget.height,
+        icon: Icons.map_outlined,
+        title: '地图未启用',
+        hint: '需要腾讯地图 Key，编译时通过 --dart-define 传入',
+      );
+    }
+
+    final allPoints = widget.points;
+    final allLatLngs = [for (final p in allPoints) _gcj(p)];
+
+    var visibleCount = allPoints.length;
     if (widget.animateIn &&
         !widget.live &&
         !AppMotion.reduced(context) &&
-        points.length > 1) {
-      final count = (1 + _drawProgress.value * (points.length - 1))
+        allPoints.length > 1) {
+      visibleCount = (1 + _drawProgress.value * (allPoints.length - 1))
           .ceil()
-          .clamp(1, points.length);
-      visiblePoints = points.sublist(0, count);
+          .clamp(1, allPoints.length);
     }
-    final latLngs = [for (final p in visiblePoints) LatLng(p.lat, p.lon)];
-    final drawComplete = visiblePoints.length == points.length;
-    final current =
-        widget.current ??
-        (widget.live ? LatLng(points.last.lat, points.last.lon) : null);
-    final showFit = !widget.live && fullLatLngs.length > 1;
+    final visiblePoints = allPoints.sublist(0, visibleCount);
+    final visibleLatLngs = allLatLngs.sublist(0, visibleCount);
+    final drawComplete = visibleCount == allPoints.length;
 
-    final options = MapOptions(
-      initialCenter: current ?? fullLatLngs.last,
-      initialZoom: widget.live ? 16 : 13,
-      initialCameraFit: showFit
-          ? CameraFit.bounds(
-              bounds: LatLngBounds.fromPoints(fullLatLngs),
-              padding: const EdgeInsets.all(30),
-            )
-          : null,
-      minZoom: 3,
-      maxZoom: 18,
-      backgroundColor: AppColors.surfaceHigh,
-      interactionOptions: const InteractionOptions(
-        flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-      ),
-      onMapReady: () {
-        _mapReady = true;
-        if (widget.live) {
-          _followCurrent();
-        }
-      },
-    );
+    final polylines = widget.colored
+        ? _coloredPolylines(visiblePoints, visibleLatLngs)
+        : <Polyline>{
+            if (visibleLatLngs.length > 1)
+              Polyline(
+                id: 'track',
+                points: visibleLatLngs,
+                width: 5,
+                color: AppColors.accent,
+              ),
+          };
+
+    final markers = <Marker>{
+      if (!widget.live)
+        Marker(
+          id: 'start',
+          position: allLatLngs.first,
+          icon: BitmapDescriptor.fromAsset(
+            'assets/map/marker_start.png',
+            width: 22,
+            height: 22,
+          ),
+          anchor: const Offset(0.5, 0.5),
+        ),
+      if (!widget.live && allLatLngs.length > 1 && drawComplete)
+        Marker(
+          id: 'end',
+          position: allLatLngs.last,
+          icon: BitmapDescriptor.fromAsset(
+            'assets/map/marker_end.png',
+            width: 22,
+            height: 22,
+          ),
+          anchor: const Offset(0.5, 0.5),
+        ),
+      if (widget.live)
+        Marker(
+          id: 'current',
+          position: allLatLngs.last,
+          icon: BitmapDescriptor.fromAsset(
+            'assets/map/marker_current.png',
+            width: 24,
+            height: 24,
+          ),
+          anchor: const Offset(0.5, 0.5),
+        ),
+    };
 
     return Container(
       height: widget.height,
@@ -187,76 +218,90 @@ class _RideMapState extends State<RideMap> with SingleTickerProviderStateMixin {
       decoration: cardDecoration(color: AppColors.surfaceHigh),
       child: Stack(
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: options,
-            children: [
-              TileLayer(
-                urlTemplate: widget.mapStyle == MapStyle.dark
-                    ? 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-                    : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                userAgentPackageName: 'com.jsonwoo.motolean',
-              ),
-              if (widget.colored)
-                PolylineLayer(polylines: _coloredPolylines(visiblePoints))
-              else
-                PolylineLayer(
-                  polylines: [
-                    if (latLngs.length > 1)
-                      Polyline(
-                        points: latLngs,
-                        strokeWidth: 5,
-                        color: AppColors.accent,
-                        strokeCap: StrokeCap.round,
-                      ),
-                  ],
-                ),
-              MarkerLayer(
-                markers: [
-                  if (!widget.live) _startMarker(fullLatLngs.first),
-                  if (!widget.live && fullLatLngs.length > 1 && drawComplete)
-                    _endMarker(fullLatLngs.last),
-                  if (widget.live)
-                    Marker(
-                      point: current!,
-                      width: 24,
-                      height: 24,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: AppColors.accent,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.accent.withValues(alpha: 0.45),
-                              blurRadius: 14,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
+          TencentMap(
+            initialCameraPosition: CameraPosition(
+              target: allLatLngs.last,
+              zoom: widget.live ? 16 : 13,
+            ),
+            apiKey: TencentMapApiKey(
+              iosKey: MapConfig.iosKey.isEmpty ? null : MapConfig.iosKey,
+              androidKey: MapConfig.androidKey.isEmpty
+                  ? null
+                  : MapConfig.androidKey,
+            ),
+            mapType: switch (widget.mapStyle) {
+              MapStyle.standard => MapType.normal,
+              MapStyle.satellite => MapType.satellite,
+              MapStyle.dark => MapType.dark,
+            },
+            compassEnabled: false,
+            scaleEnabled: false,
+            buildingsEnabled: false,
+            rotateGesturesEnabled: false,
+            tiltGesturesEnabled: false,
+            markers: markers,
+            polylines: polylines,
+            onMapCreated: (controller) {
+              _controller = controller;
+              // onMapLoaded 在部分机型上触发较晚，补一次兜底取景。
+              Future<void>.delayed(const Duration(milliseconds: 350), () {
+                if (!mounted || _mapReady) {
+                  return;
+                }
+                _mapReady = true;
+                if (widget.live) {
+                  _followCurrent();
+                } else {
+                  _fitBounds();
+                }
+              });
+            },
+            onMapLoaded: () {
+              _mapReady = true;
+              if (widget.live) {
+                _followCurrent();
+              } else {
+                _fitBounds();
+              }
+            },
           ),
+          // 只有实时记录页需要「回到当前位置」：用户拖动地图后可一键跟回。
+          // 总结页的轨迹已经自动框住全图，再放一个按钮反而无反馈，故不显示。
+          if (widget.live)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Material(
+                color: Colors.white.withValues(alpha: 0.92),
+                shape: const CircleBorder(),
+                elevation: 2,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: _followCurrent,
+                  child: const SizedBox(
+                    width: 36,
+                    height: 36,
+                    child: Icon(
+                      Icons.my_location_rounded,
+                      size: 19,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           Positioned(
             right: 8,
             bottom: 6,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.55),
+                color: Colors.black.withValues(alpha: 0.45),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(
-                widget.mapStyle == MapStyle.dark
-                    ? '© OpenStreetMap · CARTO'
-                    : '© Esri · Maxar · Earthstar Geographics',
-                style: const TextStyle(
-                  fontSize: 8,
-                  color: Color(0xFFDCE6EA),
-                ),
+              child: const Text(
+                '© 腾讯地图',
+                style: TextStyle(fontSize: 11, color: Color(0xFFE8F1F4)),
               ),
             ),
           ),
@@ -265,71 +310,28 @@ class _RideMapState extends State<RideMap> with SingleTickerProviderStateMixin {
     );
   }
 
-  Marker _startMarker(LatLng point) => Marker(
-    point: point,
-    width: 26,
-    height: 26,
-    child: Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.accent, width: 2.5),
-      ),
-      child: const Center(
-        child: Text(
-          '起',
-          style: TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-            color: AppColors.accentInk,
-          ),
-        ),
-      ),
-    ),
-  );
-
-  Marker _endMarker(LatLng point) => Marker(
-    point: point,
-    width: 26,
-    height: 26,
-    child: Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.danger, width: 2.5),
-      ),
-      child: const Center(
-        child: Text(
-          '终',
-          style: TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-            color: AppColors.danger,
-          ),
-        ),
-      ),
-    ),
-  );
-
-  List<Polyline> _coloredPolylines(List<RideMapPoint> visible) {
-    if (visible.length < 2) {
-      return [];
+  /// 按倾角区间把轨迹拆成多段，每段一条折线。
+  Set<Polyline> _coloredPolylines(
+    List<RideMapPoint> points,
+    List<LatLng> latLngs,
+  ) {
+    if (latLngs.length < 2) {
+      return const <Polyline>{};
     }
-    final latLngs = [for (final p in visible) LatLng(p.lat, p.lon)];
     final result = <Polyline>[];
-    var color = leanColor(visible[0].leanDeg);
+    var color = leanColor(points[0].leanDeg);
     var segment = <LatLng>[latLngs[0]];
     for (var i = 1; i < latLngs.length; i++) {
-      final nextColor = leanColor(visible[i].leanDeg);
+      final nextColor = leanColor(points[i].leanDeg);
       segment.add(latLngs[i]);
       if (nextColor != color) {
         if (segment.length > 1) {
           result.add(
             Polyline(
+              id: 'seg_${result.length}',
               points: List.of(segment),
-              strokeWidth: 5,
+              width: 5,
               color: color,
-              strokeCap: StrokeCap.round,
             ),
           );
         }
@@ -340,30 +342,85 @@ class _RideMapState extends State<RideMap> with SingleTickerProviderStateMixin {
     if (segment.length > 1) {
       result.add(
         Polyline(
+          id: 'seg_${result.length}',
           points: segment,
-          strokeWidth: 5,
+          width: 5,
           color: color,
-          strokeCap: StrokeCap.round,
         ),
       );
     }
-    return result;
+    return result.toSet();
   }
 }
 
+class _StatusCard extends StatelessWidget {
+  const _StatusCard({
+    required this.height,
+    required this.icon,
+    required this.title,
+    this.hint,
+  });
+
+  final double height;
+  final IconData icon;
+  final String title;
+  final String? hint;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      decoration: cardDecoration(color: AppColors.surfaceHigh),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: AppColors.textTertiary, size: 28),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textTertiary,
+                ),
+              ),
+              if (hint != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  hint!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    height: 1.4,
+                    color: AppColors.textTertiary,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 倾角越小越接近车漆的冷灰，越深越向品牌青、轮毂蓝过渡，
+/// 超过 30° 才转入琥珀与红色警示区间。
 Color leanColor(double leanDeg) {
   final lean = leanDeg.abs();
   if (lean >= 40) {
-    return AppColors.danger;
+    return const Color(0xFFE8433A);
   }
   if (lean >= 30) {
-    return AppColors.orange;
+    return const Color(0xFFF0A020);
   }
   if (lean >= 20) {
-    return AppColors.amber;
+    return const Color(0xFF0F86C5);
   }
   if (lean >= 10) {
-    return AppColors.accent;
+    return const Color(0xFF2ECBDC);
   }
-  return AppColors.textTertiary;
+  return const Color(0xFF9DB0B9);
 }

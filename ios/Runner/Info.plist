@@ -32,6 +32,10 @@
 	<string>熄屏或切到后台时继续记录骑行轨迹与倾角。</string>
 	<key>NSMotionUsageDescription</key>
 	<string>用于读取手机姿态，估算过弯倾角。</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>把行程总结和加速成绩保存为图片到相册，方便分享。</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>把行程总结和加速成绩保存为图片到相册，方便分享。</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

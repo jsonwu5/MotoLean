@@ -5,11 +5,14 @@ import '../utils/units.dart';
 
 /// 地图底图风格。
 enum MapStyle {
-  /// Esri 卫星影像（默认）。
+  /// 标准矢量底图（默认，路网与地名更清晰）。
+  standard('标准地图'),
+
+  /// 卫星影像，适合看地形与山道走向。
   satellite('卫星影像'),
 
-  /// 深色简约底图。
-  dark('简约暗色');
+  /// 暗色底图，夜间骑行更不刺眼。
+  dark('暗色地图');
 
   const MapStyle(this.label);
 
@@ -21,7 +24,7 @@ enum MapStyle {
         return style;
       }
     }
-    return MapStyle.satellite;
+    return MapStyle.standard;
   }
 }
 
@@ -61,7 +64,7 @@ class SettingsService extends ChangeNotifier {
   int _accelCountdownSeconds = 3;
   bool _accelRecordTrack = true;
   bool _showLiveTrack = true;
-  MapStyle _mapStyle = MapStyle.satellite;
+  MapStyle _mapStyle = MapStyle.standard;
 
   bool get loaded => _loaded;
 
@@ -238,7 +241,7 @@ class SettingsService extends ChangeNotifier {
     _accelCountdownSeconds = 3;
     _accelRecordTrack = true;
     _showLiveTrack = true;
-    _mapStyle = MapStyle.satellite;
+    _mapStyle = MapStyle.standard;
     notifyListeners();
     try {
       final prefs = _prefs;

@@ -279,7 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Text(
                               '${_sessions.length}',
                               style: const TextStyle(
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.textSecondary,
                               ),
@@ -290,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text(
                             '${formatDistanceWithUnit(totalDistance, widget.settings.distanceUnit)} · 最大 ${maxLean.round()}°',
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               color: AppColors.textTertiary,
                             ),
                           ),
@@ -351,19 +351,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       children: [
                         Text(
-                          '倾角由手机 IMU 估算，受安装方式、颠簸与路况影响，仅供骑行记录与娱乐参考。\n骑行前完成设置，骑行中请勿操作手机。',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 11,
-                            height: 1.6,
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
                           'MOTOLEAN · 数据保存在本机',
                           style: TextStyle(
-                            fontSize: 9,
+                            fontSize: 12,
                             letterSpacing: 2,
                             color: AppColors.textTertiary,
                           ),
@@ -405,31 +395,35 @@ class _Header extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '摩倾',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 1,
-                height: 1.1,
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '摩倾',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                  height: 1.1,
+                ),
               ),
-            ),
-            SizedBox(height: 3),
-            Text(
-              'MOTOLEAN · 山路记录',
-              style: TextStyle(
-                fontSize: 9,
-                letterSpacing: 1.8,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textTertiary,
+              SizedBox(height: 3),
+              Text(
+                'MOTOLEAN · 山路记录',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textTertiary,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const Spacer(),
+        const SizedBox(width: 8),
         IconButton(
           onPressed: onSettings,
           tooltip: '设置',
@@ -529,7 +523,7 @@ class _HeroCard extends StatelessWidget {
                       Text(
                         'GPS · IMU · 轨迹',
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 12,
                           letterSpacing: 1.1,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary,
@@ -546,15 +540,6 @@ class _HeroCard extends StatelessWidget {
                     height: 1.15,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -1,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  '倾角、速度、轨迹与海拔，一趟跑山全部记录。',
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.5,
-                    color: AppColors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -576,9 +561,9 @@ class _HeroCard extends StatelessWidget {
                     const SizedBox(width: 5),
                     const Expanded(
                       child: Text(
-                        '开始前扶正车身，保持静止 3 秒完成校准',
+                        '扶正车身，静止 3 秒完成校准',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 12,
                           color: AppColors.textTertiary,
                         ),
                       ),
@@ -591,7 +576,7 @@ class _HeroCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           foregroundColor: AppColors.textSecondary,
                           textStyle: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -666,7 +651,7 @@ class _AccelerationCard extends StatelessWidget {
                     Text(
                       'GPS 测速 · 插值计时',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 11.5,
                         color: AppColors.textTertiary,
                       ),
                     ),
@@ -729,7 +714,7 @@ class _AccelerationCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   foregroundColor: AppColors.textSecondary,
                   textStyle: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -799,7 +784,7 @@ class _SessionCard extends StatelessWidget {
                     Text(
                       '${session.startedAt.month}月',
                       style: const TextStyle(
-                        fontSize: 10,
+                        fontSize: 11.5,
                         color: AppColors.textTertiary,
                       ),
                     ),
@@ -838,7 +823,7 @@ class _SessionCard extends StatelessWidget {
                             child: const Text(
                               '演示',
                               style: TextStyle(
-                                fontSize: 8,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.accentInk,
                               ),
@@ -850,7 +835,7 @@ class _SessionCard extends StatelessWidget {
                           const Text(
                             '未完成',
                             style: TextStyle(
-                              fontSize: 9,
+                              fontSize: 12,
                               color: AppColors.amber,
                             ),
                           ),
@@ -859,10 +844,9 @@ class _SessionCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${formatClock(session.startedAt)} · ${formatDuration(session.durationS)} · '
-                      '均速 ${formatSpeedWithUnit(session.avgSpeedMps, unit)}',
+                      '${formatClock(session.startedAt)} · ${formatDuration(session.durationS)}',
                       style: const TextStyle(
-                        fontSize: 11,
+                        fontSize: 12,
                         color: AppColors.textTertiary,
                       ),
                     ),
@@ -906,7 +890,7 @@ class _SessionCard extends StatelessWidget {
                   const Text(
                     '最大倾角',
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 12,
                       letterSpacing: 0.5,
                       color: AppColors.textTertiary,
                     ),
@@ -942,7 +926,7 @@ class _MiniValue extends StatelessWidget {
         Text(
           value,
           style: const TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             color: AppColors.textSecondary,
             fontFeatures: tabularFigures,
@@ -1007,11 +991,6 @@ class _EmptyState extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            '没有真机？先看一条模拟山路行程。',
-            style: TextStyle(fontSize: 10, color: AppColors.textTertiary),
           ),
         ],
       ),
@@ -1103,7 +1082,7 @@ class _MeasurementInfoSheet extends StatelessWidget {
             const Text(
               '注意：手机 GPS 在山谷、林道与隧道中会漂移或中断，轨迹仅供参考。',
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 height: 1.6,
                 color: AppColors.textTertiary,
               ),

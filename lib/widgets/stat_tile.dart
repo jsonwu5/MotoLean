@@ -48,7 +48,7 @@ class StatTile extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
               letterSpacing: 0.8,
               color: AppColors.textTertiary,
@@ -80,7 +80,7 @@ class StatTile extends StatelessWidget {
                   child: Text(
                     unit!,
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textTertiary,
                     ),

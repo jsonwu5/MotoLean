@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../models/acceleration_run.dart';
 import '../models/acceleration_sample.dart';
@@ -9,6 +8,8 @@ import '../theme.dart';
 import '../utils/format.dart';
 import '../utils/units.dart';
 import '../widgets/ride_map.dart';
+import '../services/share_image.dart';
+import '../widgets/share_poster.dart';
 
 class AccelerationResultScreen extends StatefulWidget {
   const AccelerationResultScreen({
@@ -65,34 +66,33 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
     }
   }
 
-  Future<void> _share(AccelerationRun run) async {
-    final unit = widget.settings.speedUnit;
-    final lines = [
-      '摩倾 · 零百加速成绩',
-      '${run.rollout ? '含 1 英尺 rollout · ' : ''}${formatDateWithWeekday(run.startedAt)}',
-      '0–${run.targetSpeedKmh.round()} km/h：${run.resultSeconds.toStringAsFixed(2)} 秒',
+  Future<void> _sharePoster(AccelerationRun run) async {
+    final caption = [
+      '摩倾 · 零百 ${run.resultSeconds.toStringAsFixed(2)} 秒'
+          '（0–${run.targetSpeedKmh.round()} km/h）',
+      formatDateWithWeekday(run.startedAt),
       if (run.result60Seconds != null)
         '0–60：${run.result60Seconds!.toStringAsFixed(2)} 秒',
-      if (run.result130Seconds != null)
-        '60–130：${run.result130Seconds!.toStringAsFixed(2)} 秒',
-      if (run.distanceM != null)
-        '起步距离：${formatDistanceWithUnit(run.distanceM!, widget.settings.distanceUnit)}',
-      if (run.gradePercent != null)
-        '坡度：${run.gradePercent!.toStringAsFixed(1)}%',
-      if (run.gpsAccuracyM != null) 'GPS 精度：±${run.gpsAccuracyM!.round()} m',
-      unit == SpeedUnit.kmh ? '' : '',
-      '手机 GPS 估算，仅供参考',
-    ].where((line) => line.isNotEmpty).toList();
+    ].join('\n');
 
-    try {
-      await SharePlus.instance.share(
-        ShareParams(text: lines.join('\n'), subject: '摩倾零百成绩'),
+    final saved = await showSharePosterDialog(
+      context,
+      poster: AccelerationSharePoster(run: run, settings: widget.settings),
+      fileName: 'motolean_accel_${formatFileStamp(run.startedAt)}.png',
+      subject: '摩倾零百成绩',
+      text: caption,
+    );
+
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('长图已保存到相册，可去微信 / 抖音选图发布'),
+          action: SnackBarAction(
+            label: '打开相册',
+            onPressed: () => ShareImage.openGallery(),
+          ),
+        ),
       );
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('分享失败：$error')));
-      }
     }
   }
 
@@ -154,7 +154,7 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
               onSelected: (value) {
                 switch (value) {
                   case 'share':
-                    _share(run);
+                    _sharePoster(run);
                     break;
                   case 'delete':
                     _delete();
@@ -162,7 +162,7 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
                 }
               },
               itemBuilder: (context) => const [
-                PopupMenuItem(value: 'share', child: Text('分享成绩')),
+                PopupMenuItem(value: 'share', child: Text('保存长图')),
                 PopupMenuItem(
                   value: 'delete',
                   child: Text(
@@ -297,7 +297,7 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
                 const Text(
                   '含 1 英尺 rollout',
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 11.5,
                     color: AppColors.textSecondary,
                   ),
                 ),
@@ -394,9 +394,9 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
         ],
         const SizedBox(height: 20),
         FilledButton.icon(
-          onPressed: () => _share(run),
+          onPressed: () => _sharePoster(run),
           icon: const Icon(Icons.ios_share_rounded, size: 20),
-          label: const Text('分享成绩'),
+          label: const Text('保存长图'),
         ),
         const SizedBox(height: 10),
         OutlinedButton.icon(
@@ -408,22 +408,11 @@ class _AccelerationResultScreenState extends State<AccelerationResultScreen> {
             side: BorderSide(color: AppColors.danger.withValues(alpha: 0.35)),
           ),
         ),
-        const SizedBox(height: 18),
-        const Text(
-          '成绩为手机 GPS 估算值（约 ±0.1–0.3 秒），受卫星信号与更新率影响，'
-          '适合同一设备横向对比，不适合与专业遥测设备比较绝对值。',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 10,
-            height: 1.6,
-            color: AppColors.textTertiary,
-          ),
-        ),
         const SizedBox(height: 6),
         Center(
           child: Text(
             '目标单位：km/h · 显示单位：${unit.label}',
-            style: const TextStyle(fontSize: 9, color: AppColors.textTertiary),
+            style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
           ),
         ),
       ],
@@ -448,7 +437,7 @@ class _Tag extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 9,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           color: color,
         ),
@@ -487,7 +476,7 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             label,
-            style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
+            style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary),
           ),
         ],
       ),
@@ -519,7 +508,7 @@ class _InlineNote extends StatelessWidget {
             child: Text(
               text,
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 height: 1.5,
                 color: AppColors.textSecondary,
               ),

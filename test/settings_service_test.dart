@@ -18,7 +18,7 @@ void main() {
       expect(settings.accelCountdownSeconds, 3);
       expect(settings.accelRecordTrack, isTrue);
       expect(settings.showLiveTrack, isTrue);
-      expect(settings.mapStyle, MapStyle.satellite);
+      expect(settings.mapStyle, MapStyle.standard);
     });
 
     test('英制距离会让海拔自动切到英尺', () async {
@@ -90,7 +90,7 @@ void main() {
       expect(settings.speedUnit, SpeedUnit.kmh);
       expect(settings.distanceUnit, DistanceUnit.km);
       expect(settings.accelRollout, isFalse);
-      expect(settings.mapStyle, MapStyle.satellite);
+      expect(settings.mapStyle, MapStyle.standard);
     });
   });
 

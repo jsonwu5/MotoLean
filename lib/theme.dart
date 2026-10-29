@@ -71,7 +71,7 @@ ThemeData buildAppTheme() {
     useMaterial3: true,
     colorScheme: const ColorScheme.light(
       primary: AppColors.accent,
-      onPrimary: AppColors.onAccent,
+      onPrimary: Colors.white,
       secondary: AppColors.blue,
       onSecondary: Colors.white,
       surface: AppColors.surface,
@@ -118,7 +118,7 @@ ThemeData buildAppTheme() {
             color: AppColors.textSecondary,
           ),
           labelSmall: const TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w600,
             letterSpacing: 1.2,
             color: AppColors.textTertiary,
@@ -140,7 +140,7 @@ ThemeData buildAppTheme() {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: AppColors.accent,
-        foregroundColor: AppColors.onAccent,
+        foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(56),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         textStyle: const TextStyle(

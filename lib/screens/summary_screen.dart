@@ -16,6 +16,9 @@ import '../utils/ride_analytics.dart';
 import '../utils/units.dart';
 import '../widgets/motion.dart';
 import '../widgets/ride_map.dart';
+import '../services/share_image.dart';
+import '../widgets/share_poster.dart';
+import 'track_playback_screen.dart';
 import '../widgets/stat_tile.dart';
 
 class SummaryScreen extends StatefulWidget {
@@ -70,6 +73,58 @@ class _SummaryScreenState extends State<SummaryScreen> {
         _loading = false;
         _error = '读取行程失败：$error';
       });
+    }
+  }
+
+  void _openPlayback() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TrackPlaybackScreen(
+          samples: _samples,
+          settings: widget.settings,
+          subtitle: _session == null
+              ? null
+              : formatDateWithWeekday(_session!.startedAt),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sharePoster() async {
+    final session = _session;
+    if (session == null) {
+      return;
+    }
+    final caption = [
+      '摩倾 · ${formatDateWithWeekday(session.startedAt)}',
+      '里程 ${formatDistanceWithUnit(session.distanceM, widget.settings.distanceUnit)}'
+          ' · 最大右倾 ${session.maxLeanRightDeg.round()}°'
+          ' · 最大左倾 ${session.maxLeanLeftDeg.round()}°',
+    ].join('\n');
+
+    final saved = await showSharePosterDialog(
+      context,
+      poster: RideSharePoster(
+        session: session,
+        bands: RideAnalytics.leanBands(_samples),
+        corners: RideAnalytics.cornerCount(_samples),
+        settings: widget.settings,
+      ),
+      fileName: 'motolean_ride_${formatFileStamp(session.startedAt)}.png',
+      subject: '摩倾骑行总结',
+      text: caption,
+    );
+
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('长图已保存到相册，可去微信 / 抖音选图发布'),
+          action: SnackBarAction(
+            label: '打开相册',
+            onPressed: () => ShareImage.openGallery(),
+          ),
+        ),
+      );
     }
   }
 
@@ -287,7 +342,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                             child: const Text(
                               '演示',
                               style: TextStyle(
-                                fontSize: 9,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.accentInk,
                               ),
@@ -328,7 +383,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
           const SizedBox(height: 8),
           Text(
             session.note!,
-            style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
+            style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary),
           ),
         ],
         const SizedBox(height: 18),
@@ -339,6 +394,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
               points: mapPoints,
               hasTrack: mapPoints.length > 1,
               mapStyle: widget.settings.mapStyle,
+              onPlay: () => _openPlayback(),
             ),
           ),
         ),
@@ -477,8 +533,8 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  '各区间占本次记录时长的比例（1 Hz 采样）',
-                  style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                  '占记录时长比例（1 Hz 采样）',
+                  style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
                 ),
                 const SizedBox(height: 18),
                 _LeanBands(bands: bands),
@@ -503,7 +559,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 Text(
                   'GPS 速度 · ${unit.label}',
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     color: AppColors.textTertiary,
                   ),
                 ),
@@ -517,6 +573,15 @@ class _SummaryScreenState extends State<SummaryScreen> {
           ),
         ),
         const SizedBox(height: 20),
+        StaggerIn(
+          index: 8,
+          child: FilledButton.icon(
+            onPressed: _exporting ? null : _sharePoster,
+            icon: const Icon(Icons.ios_share_rounded, size: 20),
+            label: const Text('保存长图'),
+          ),
+        ),
+        const SizedBox(height: 10),
         StaggerIn(
           index: 8,
           child: Row(
@@ -560,16 +625,6 @@ class _SummaryScreenState extends State<SummaryScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 8),
-        const Text(
-          '倾角为手机 IMU 估算值，速度与轨迹来自 GPS，仅供骑行记录与参考。',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 10,
-            height: 1.6,
-            color: AppColors.textTertiary,
-          ),
-        ),
       ],
     );
   }
@@ -581,11 +636,13 @@ class RemoteMapCard extends StatelessWidget {
     required this.points,
     required this.hasTrack,
     this.mapStyle = MapStyle.satellite,
+    this.onPlay,
   });
 
   final List<RideMapPoint> points;
   final bool hasTrack;
   final MapStyle mapStyle;
+  final VoidCallback? onPlay;
 
   @override
   Widget build(BuildContext context) {
@@ -593,12 +650,84 @@ class RemoteMapCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (hasTrack)
-          RideMap(
-            points: points,
-            height: 250,
-            colored: true,
-            mapStyle: mapStyle,
-            animateIn: true,
+          Stack(
+            children: [
+              RideMap(
+                points: points,
+                height: 250,
+                colored: true,
+                mapStyle: mapStyle,
+                animateIn: true,
+              ),
+              if (onPlay != null)
+                Positioned(
+                  left: 12,
+                  bottom: 12,
+                  child: Material(
+                    color: const Color(0xD90C191E),
+                    borderRadius: BorderRadius.circular(28),
+                    elevation: 8,
+                    shadowColor: Colors.black.withValues(alpha: 0.45),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(28),
+                      onTap: onPlay,
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(5, 5, 17, 5),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.16),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 30,
+                              height: 30,
+                              decoration: const BoxDecoration(
+                                color: AppColors.accent,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow_rounded,
+                                size: 20,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 9),
+                            const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  '回放轨迹',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    height: 1.1,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.2,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  '按时间重现这一趟',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    height: 1.1,
+                                    color: Color(0xB3FFFFFF),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           )
         else
           Container(
@@ -650,7 +779,7 @@ class _LegendItem extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           label,
-          style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
+          style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary),
         ),
       ],
     );
@@ -684,12 +813,12 @@ class _HighlightChip extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             '$label ',
-            style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
+            style: const TextStyle(fontSize: 11.5, color: AppColors.textTertiary),
           ),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
               color: AppColors.textSecondary,
               fontFeatures: tabularFigures,
@@ -720,11 +849,12 @@ class _LeanBands extends StatelessWidget {
             child: Row(
               children: [
                 SizedBox(
-                  width: 54,
+                  width: 60,
                   child: Text(
                     band.label,
+                    maxLines: 1,
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textSecondary,
                     ),
@@ -763,12 +893,15 @@ class _LeanBands extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
                 SizedBox(
-                  width: 70,
+                  width: 86,
                   child: Text(
                     '${(band.fraction * 100).round()}% · ${formatDuration(band.seconds)}',
                     textAlign: TextAlign.right,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.fade,
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 11.5,
                       color: AppColors.textTertiary,
                       fontFeatures: tabularFigures,
                     ),
@@ -874,7 +1007,7 @@ class _SpeedChartState extends State<_SpeedChart>
                     getTitlesWidget: (value, meta) => Text(
                       value.round().toString(),
                       style: const TextStyle(
-                        fontSize: 9,
+                        fontSize: 12,
                         color: AppColors.textTertiary,
                       ),
                     ),
@@ -890,7 +1023,7 @@ class _SpeedChartState extends State<_SpeedChart>
                       child: Text(
                         formatDuration(value.round()),
                         style: const TextStyle(
-                          fontSize: 9,
+                          fontSize: 12,
                           color: AppColors.textTertiary,
                         ),
                       ),

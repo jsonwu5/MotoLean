@@ -184,7 +184,7 @@ class _LimitLabel extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
             color: color.withValues(alpha: 0.9),
           ),

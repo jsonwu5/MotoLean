@@ -163,8 +163,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context,
       title: '地图底图',
       options: const [
-        (MapStyle.satellite, '卫星影像 · Esri'),
-        (MapStyle.dark, '简约暗色'),
+        (MapStyle.standard, '标准 · 路网清晰'),
+        (MapStyle.satellite, '卫星 · 看地形'),
+        (MapStyle.dark, '暗色 · 夜间友好'),
       ],
       current: widget.settings.mapStyle,
     );
@@ -323,7 +324,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.of(context).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: danger ? AppColors.danger : AppColors.accent,
-              foregroundColor: danger ? Colors.white : AppColors.onAccent,
+              foregroundColor: Colors.white,
               minimumSize: const Size(0, 44),
               padding: const EdgeInsets.symmetric(horizontal: 18),
             ),
@@ -360,7 +361,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(
               '版本 $kAppVersion',
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 color: AppColors.textTertiary,
               ),
             ),
@@ -379,7 +380,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               '倾角由手机 IMU 估算，零百成绩由 GPS 插值估算，均受设备与安装方式影响，'
               '仅供记录与娱乐参考，不构成任何安全保证。',
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 height: 1.6,
                 color: AppColors.textTertiary,
               ),
@@ -521,7 +522,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   SettingsSwitchTile(
                     icon: Icons.straighten_rounded,
                     title: '1 英尺 rollout',
-                    subtitle: '从车辆移动约 30 cm 后开始计时，成绩更短',
+                    subtitle: '移动约 30 cm 后开始计时',
                     value: settings.accelRollout,
                     onChanged: settings.setAccelRollout,
                   ),
@@ -621,7 +622,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 'MOTOLEAN · 数据保存在本机',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 9,
+                  fontSize: 12,
                   letterSpacing: 2,
                   color: AppColors.textTertiary,
                 ),

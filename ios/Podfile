@@ -28,9 +28,16 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 flutter_ios_podfile_setup
 
 target 'Runner' do
-  use_frameworks!
+  # Tencent-MapSDK（QMapKit.framework）是静态二进制，
+  # 必须用静态链接的 frameworks，否则 CocoaPods 会拒绝解析依赖。
+  use_frameworks! :linkage => :static
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
+  # Tencent-MapSDK 6.x 把 QMapFoundationKit 拆成了独立 pod，
+  # 但 QMapKit 的头文件仍依赖它，不显式引入会报 "Could not build module 'QMapKit'"。
+  pod 'Tencent-MapFoundation', '~> 5.2'
+
   target 'RunnerTests' do
     inherit! :search_paths
   end
@@ -44,6 +51,14 @@ post_install do |installer|
         '$(inherited)',
         'PERMISSION_LOCATION=1',
       ]
+
+      # Tencent-MapSDK 的 QMapKit 头文件会 import <QMapFoundationKit/...>，
+      # 但插件 pod 只声明了 Tencent-MapSDK 依赖，拿不到 Foundation 的搜索路径。
+      # 这里统一补上，否则编译时报 "Could not build module 'QMapKit'"。
+      search_paths = config.build_settings['FRAMEWORK_SEARCH_PATHS'] || ['$(inherited)']
+      search_paths = [search_paths] if search_paths.is_a?(String)
+      search_paths << '${PODS_ROOT}/Tencent-MapFoundation'
+      config.build_settings['FRAMEWORK_SEARCH_PATHS'] = search_paths.uniq
     end
   end
 end

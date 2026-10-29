@@ -40,6 +40,10 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // 腾讯地图 Android Key：构建时用 -PTENCENT_MAP_ANDROID_KEY=xxx 传入，
+        // 或写进 android/local.properties（已被 .gitignore 排除）。
+        manifestPlaceholders["tencentMapKey"] =
+            (project.findProperty("TENCENT_MAP_ANDROID_KEY") as String?) ?: ""
     }
 
     signingConfigs {

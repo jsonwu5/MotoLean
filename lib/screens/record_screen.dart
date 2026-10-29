@@ -304,20 +304,11 @@ class _RecordScreenState extends State<RecordScreen> {
                     letterSpacing: -1,
                   ),
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  '接下来会用 ${_recorder.calibrationSeconds} 秒校准倾角零位，然后自动开始记录。',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    height: 1.5,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
                 const SizedBox(height: 24),
                 const _StepCard(
                   number: '01',
                   title: '固定方向',
-                  body: '手机的 X 轴要指向车身右侧。竖装时屏幕朝向骑手、顶部朝上；平放时屏幕朝上、顶部朝车头。请使用刚性支架。',
+                  body: '手机 X 轴指向车身右侧。竖装屏幕朝骑手，平放顶部朝车头。',
                   icon: Icons.phone_android_rounded,
                 ),
                 const SizedBox(height: 10),
@@ -325,49 +316,16 @@ class _RecordScreenState extends State<RecordScreen> {
                   number: '02',
                   title: '扶正车身',
                   body:
-                      '开始后保持车身与手机静止 '
-                      '${_recorder.calibrationSeconds} 秒，完成零位校准。'
-                      '支架角度变化后请重新开始一次记录。',
+                      '开始后保持静止 '
+                      '${_recorder.calibrationSeconds} 秒，完成零位校准。',
                   icon: Icons.straighten_rounded,
                 ),
                 const SizedBox(height: 10),
                 const _StepCard(
                   number: '03',
                   title: '允许后台定位',
-                  body: '熄屏记录需要「始终允许」定位权限。Android 还需允许通知，前台服务会显示一条记录通知。',
+                  body: '熄屏记录需要「始终允许」定位权限。',
                   icon: Icons.my_location_rounded,
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.amber.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: AppColors.amber.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: const Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.health_and_safety_outlined,
-                        size: 18,
-                        color: AppColors.amber,
-                      ),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          '所有设置请在出发前完成。骑行中不要操作手机，屏幕可以保持常亮，也可以熄屏记录。',
-                          style: TextStyle(
-                            fontSize: 11,
-                            height: 1.6,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
                 const SizedBox(height: 24),
                 PressableScale(
@@ -380,9 +338,9 @@ class _RecordScreenState extends State<RecordScreen> {
                 const SizedBox(height: 10),
                 Center(
                   child: Text(
-                    '最大倾角只是趣味数据，安全回家最重要。',
+                    '骑行中请勿操作手机，安全回家最重要。',
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 11.5,
                       color: AppColors.textTertiary.withValues(alpha: 0.8),
                     ),
                   ),
@@ -472,7 +430,7 @@ class _RecordScreenState extends State<RecordScreen> {
                           const Text(
                             '秒',
                             style: TextStyle(
-                              fontSize: 11,
+                              fontSize: 12,
                               color: AppColors.textTertiary,
                             ),
                           ),
@@ -592,7 +550,7 @@ class _RecordScreenState extends State<RecordScreen> {
                   '如果使用的是模拟器或没有传感器的设备，加速度计可能不可用。可以先返回首页载入演示行程，查看完整的记录与统计效果。',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 12,
                     height: 1.6,
                     color: AppColors.textTertiary,
                   ),
@@ -767,7 +725,7 @@ class _RecordScreenState extends State<RecordScreen> {
                                   const Text(
                                     '本次最高',
                                     style: TextStyle(
-                                      fontSize: 9,
+                                      fontSize: 12,
                                       letterSpacing: 0.8,
                                       color: AppColors.textTertiary,
                                     ),
@@ -869,7 +827,7 @@ class _RecordScreenState extends State<RecordScreen> {
                   Text(
                     _recorder.gpsError!,
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 11.5,
                       color: AppColors.amber,
                     ),
                   ),
@@ -966,7 +924,7 @@ class _RecordScreenState extends State<RecordScreen> {
           SizedBox(height: 6),
           Text(
             '写入本地数据库',
-            style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+            style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
           ),
         ],
       ),
@@ -1046,7 +1004,7 @@ class _StepCard extends StatelessWidget {
                     Text(
                       number,
                       style: const TextStyle(
-                        fontSize: 10,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 1,
                         color: AppColors.accentInk,
@@ -1104,7 +1062,7 @@ class _LivePill extends StatelessWidget {
           Text(
             paused ? '已暂停' : '记录中',
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 11.5,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.6,
               color: color,
@@ -1189,7 +1147,7 @@ class _InlineBanner extends StatelessWidget {
             child: Text(
               text,
               style: const TextStyle(
-                fontSize: 11,
+                fontSize: 12,
                 height: 1.45,
                 color: AppColors.textSecondary,
               ),
@@ -1203,7 +1161,7 @@ class _InlineBanner extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 foregroundColor: color,
                 textStyle: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -1215,6 +1173,7 @@ class _InlineBanner extends StatelessWidget {
   }
 }
 
+/// GPS / IMU 状态小标签。
 class _StatusChip extends StatelessWidget {
   const _StatusChip({required this.label, required this.color});
 
@@ -1241,7 +1200,7 @@ class _StatusChip extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 9,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
               color: color,
             ),
